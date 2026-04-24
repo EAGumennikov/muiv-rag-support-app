@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel panel-readable panel-wide">
+    <span class="eyebrow">{{ page.eyebrow }}</span>
+    <h1>{{ page.heading }}</h1>
+    <p class="lead-text">{{ page.summary }}</p>
+    {{ page.content | markdown_to_html }}
+</section>
+{% endblock %}

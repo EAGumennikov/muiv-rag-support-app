@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 from scripts.common_paths import CHUNK_MAP_PATH_DEFAULT, INDEX_PATH_DEFAULT
 from scripts.providers.yandex_llm import generate_answer
 
+from services.article_service import build_source_cards
 from services.retrieval_service import (
     MODEL_NAME_DEFAULT,
     TOP_K_DEFAULT,
@@ -111,6 +112,7 @@ def generate_answer_from_query(
             "query": query,
             "answer": "По запросу не удалось найти релевантные фрагменты в индексированном корпусе.",
             "sources": [],
+            "source_labels": [],
             "debug": {
                 "retrieved_chunks": 0,
                 "used_chunks": 0,
@@ -125,11 +127,13 @@ def generate_answer_from_query(
     )
     prompt = build_prompt(query, context_blocks)
     answer = generate_answer(prompt)
+    source_cards = build_source_cards(results)
 
     return {
         "query": query,
         "answer": answer,
-        "sources": source_labels,
+        "sources": source_cards,
+        "source_labels": source_labels,
         "debug": {
             "retrieved_chunks": len(results),
             "used_chunks": len(source_labels),

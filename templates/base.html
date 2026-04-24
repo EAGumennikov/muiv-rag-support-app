@@ -10,20 +10,43 @@
     <header class="site-header">
         <div class="container header-inner">
             <a class="brand" href="{{ url_for('index') }}">MUIV RAG Support App</a>
-            <nav class="main-nav">
-                <a href="{{ url_for('index') }}">Главная</a>
-                <a href="{{ url_for('about') }}">О системе</a>
+            <nav class="main-nav" aria-label="Основная навигация">
+                {% for item in public_navigation %}
+                <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">
+                    {{ item.menu_title }}
+                </a>
+                {% endfor %}
             </nav>
         </div>
     </header>
 
     <main class="container page-content">
+        <nav class="breadcrumbs" aria-label="Хлебные крошки">
+            <ol>
+                {% for crumb in breadcrumbs %}
+                <li>
+                    {% if crumb.url and not loop.last %}
+                    <a href="{{ crumb.url }}">{{ crumb.label }}</a>
+                    {% else %}
+                    <span>{{ crumb.label }}</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ol>
+        </nav>
         {% block content %}{% endblock %}
     </main>
 
     <footer class="site-footer">
-        <div class="container">
-            <p>Учебный прототип системы управления знаниями службы поддержки пользователей.</p>
+        <div class="container footer-inner">
+            <div>
+                <p>Учебный прототип системы управления знаниями службы поддержки пользователей.</p>
+                <p class="footer-author">Автор: Гуменников Евгений Андреевич</p>
+            </div>
+            <div class="footer-links">
+                <a href="{{ url_for('feedback_page') }}">Обратная связь</a>
+                <a href="{{ url_for('about_system_page') }}">О системе</a>
+            </div>
         </div>
     </footer>
 </body>

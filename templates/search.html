@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero hero-compact">
+    <div class="hero-copy">
+        <span class="eyebrow">{{ page.eyebrow }}</span>
+        <h1>{{ page.heading }}</h1>
+        <p>{{ page.summary }}</p>
+    </div>
+    <div class="hero-card">
+        {{ page.content | markdown_to_html }}
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Задать вопрос</h2>
+    <form class="question-form" action="{{ url_for('ask') }}" method="post">
+        <label for="question">Введите вопрос пользователя</label>
+        <textarea
+            id="question"
+            name="question"
+            rows="6"
+            placeholder="Например: как подключить сетевой принтер и что проверить, если печать не начинается?"
+        >{{ question }}</textarea>
+        <button type="submit">Получить ответ</button>
+        <p class="form-note">Система выполнит retrieval, сформирует ответ и покажет понятные пользователю источники.</p>
+        {% if error_message %}
+        <div class="status-message status-error">{{ error_message }}</div>
+        {% endif %}
+    </form>
+</section>
+
+<section class="results-grid search-results-grid">
+    <article class="panel">
+        <h2>Ответ системы</h2>
+        <div class="result-block markdown-content">
+            {% if answer_html %}
+            {{ answer_html }}
+            {% else %}
+            <p class="placeholder-text">После отправки вопроса здесь появится итоговый ответ, оформленный как читаемый текст со списками и кодовыми блоками.</p>
+            {% endif %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <h2>Источники</h2>
+        {% if sources %}
+        <div class="source-cards">
+            {% for source in sources %}
+            <article class="source-card">
+                <div class="source-card-head">
+                    <h3>{{ source.title }}</h3>
+                    {% if source.section %}
+                    <span class="source-badge">{{ source.section }}</span>
+                    {% endif %}
+                </div>
+                <p class="source-breadcrumbs">{{ source.breadcrumbs | join(" > ") }}</p>
+                {% if source.excerpt %}
+                <p class="source-excerpt">{{ source.excerpt }}</p>
+                {% endif %}
+                <div class="source-actions">
+                    <a class="button-secondary" href="{{ url_for('article_detail', doc_id=source.doc_id) }}">Открыть статью</a>
+                    <a class="button-secondary" href="{{ url_for('download_article', doc_id=source.doc_id) }}">Скачать markdown</a>
+                    {% if source.original_url %}
+                    <a class="button-secondary" href="{{ source.original_url }}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="placeholder-text">После выполнения retrieval здесь появятся карточки использованных статей с действиями для просмотра и скачивания.</p>
+        {% endif %}
+    </article>
+</section>
+
+{% if debug %}
+<section class="panel">
+    <h2>Служебные данные</h2>
+    <div class="debug-grid">
+        <div class="debug-item">
+            <span class="debug-label">Найдено фрагментов</span>
+            <strong>{{ debug.retrieved_chunks }}</strong>
+        </div>
+        <div class="debug-item">
+            <span class="debug-label">Использовано в контексте</span>
+            <strong>{{ debug.used_chunks }}</strong>
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
