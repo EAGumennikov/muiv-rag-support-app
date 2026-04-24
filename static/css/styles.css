@@ -324,9 +324,22 @@ img {
     justify-content: space-between;
 }
 
+.section-head-compact {
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
 .source-card-head {
     align-items: flex-start;
     justify-content: space-between;
+}
+
+.panel-hint {
+    max-width: 360px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
 }
 
 .source-badge {
@@ -370,6 +383,12 @@ img {
 .source-excerpt {
     margin-bottom: 0;
     line-height: 1.6;
+}
+
+.answer-panel .result-block,
+.sources-panel .source-cards,
+.sources-panel > .placeholder-text {
+    margin-top: 0.35rem;
 }
 
 .stats-line {
@@ -591,5 +610,9 @@ img {
 
     .debug-grid {
         grid-template-columns: 1fr;
+    }
+
+    .panel-hint {
+        max-width: none;
     }
 }

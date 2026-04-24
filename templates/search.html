@@ -13,7 +13,13 @@
 </section>
 
 <section class="panel">
-    <h2>Задать вопрос</h2>
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Запрос</span>
+            <h2>Задать вопрос</h2>
+        </div>
+        <p class="panel-hint">Сформулируйте вопрос так, как его мог бы описать пользователь или специалист поддержки.</p>
+    </div>
     <form class="question-form" action="{{ url_for('ask') }}" method="post">
         <label for="question">Введите вопрос пользователя</label>
         <textarea
@@ -31,8 +37,16 @@
 </section>
 
 <section class="results-grid search-results-grid">
-    <article class="panel">
-        <h2>Ответ системы</h2>
+    <article class="panel answer-panel">
+        <div class="section-head section-head-compact">
+            <div>
+                <span class="eyebrow">Результат</span>
+                <h2>Ответ системы</h2>
+            </div>
+            {% if answer_html %}
+            <p class="panel-hint">Ответ сформирован по найденным материалам базы знаний.</p>
+            {% endif %}
+        </div>
         <div class="result-block markdown-content">
             {% if answer_html %}
             {{ answer_html }}
@@ -42,8 +56,16 @@
         </div>
     </article>
 
-    <article class="panel">
-        <h2>Источники</h2>
+    <article class="panel sources-panel">
+        <div class="section-head section-head-compact">
+            <div>
+                <span class="eyebrow">Основание ответа</span>
+                <h2>Источники</h2>
+            </div>
+            {% if sources %}
+            <p class="panel-hint">Откройте статью целиком или скачайте markdown-версию для подробного просмотра.</p>
+            {% endif %}
+        </div>
         {% if sources %}
         <div class="source-cards">
             {% for source in sources %}
