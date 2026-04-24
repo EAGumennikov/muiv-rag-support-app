@@ -34,6 +34,8 @@ class Role(Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
+    user_roles: Mapped[list["UserRole"]] = relationship(back_populates="role")
+
 
 class User(Base):
     # Пользовательская таблица пока не задействована в аутентификации,
@@ -48,6 +50,8 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
+    user_roles: Mapped[list["UserRole"]] = relationship(back_populates="user")
+
 
 class UserRole(Base):
     # Связь многие-ко-многим между пользователями и ролями.
@@ -59,6 +63,9 @@ class UserRole(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), nullable=False)
     assigned_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="user_roles")
+    role: Mapped["Role"] = relationship(back_populates="user_roles")
 
 
 class Article(Base):
