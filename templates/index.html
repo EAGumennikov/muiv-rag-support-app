@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <span class="eyebrow">Прототип веб-интерфейса</span>
+        <h1>Система поддержки пользователей с RAG-подходом</h1>
+        <p>
+            Этот интерфейс является первым каркасом веб-сервиса над существующим
+            RAG-ядром. Здесь будет выполняться поиск по корпусу знаний и
+            формирование итогового ответа для оператора или пользователя.
+        </p>
+    </div>
+    <div class="hero-card">
+        <h2>Назначение системы</h2>
+        <p>
+            Прототип предназначен для демонстрации того, как retrieval и внешняя
+            LLM могут использоваться для поддержки поиска решений по обращениям пользователей.
+        </p>
+    </div>
+</section>
+
+<section class="panel">
+    <h2>Задать вопрос</h2>
+    <form class="question-form">
+        <label for="question">Введите вопрос пользователя</label>
+        <textarea
+            id="question"
+            name="question"
+            rows="5"
+            placeholder="Например: почему не открывается личный кабинет и что можно проверить?"
+        ></textarea>
+        <button type="submit" disabled>Отправить</button>
+        <p class="form-note">На первом этапе кнопка не активна: ответ отображается как демонстрационная заглушка.</p>
+    </form>
+</section>
+
+<section class="results-grid">
+    <article class="panel">
+        <h2>Ответ системы</h2>
+        <div class="result-block">
+            <p>{{ answer_text }}</p>
+        </div>
+    </article>
+
+    <article class="panel">
+        <h2>Источники</h2>
+        <div class="result-block">
+            <ul class="sources-list">
+                {% for source in sources %}
+                <li>{{ source }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </article>
+</section>
+{% endblock %}
