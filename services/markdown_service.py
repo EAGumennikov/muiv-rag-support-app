@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""
+Сервис нормализации и рендера markdown в HTML.
+
+Он используется в веб-приложении для показа RAG-ответов, статических страниц
+и пользовательских статей. Выделение этой логики в отдельный модуль позволяет
+настраивать рендер централизованно и не дублировать его по маршрутам.
+"""
+
 import re
 
 from markupsafe import Markup
@@ -7,6 +15,9 @@ import markdown
 
 
 def normalize_markdown(text: str) -> str:
+    # Перед рендером исправляем типичные дефекты LLM-ответов:
+    # нестандартные маркеры списков, лишнюю обертку ```markdown и
+    # незакрытые fenced blocks.
     value = (text or "").replace("\r\n", "\n").strip()
     if not value:
         return ""
@@ -27,6 +38,8 @@ def normalize_markdown(text: str) -> str:
 
 
 def render_markdown(text: str) -> Markup:
+    # В HTML переводится уже нормализованный markdown. Это уменьшает
+    # вероятность того, что пользователь увидит "сырой" текст разметки.
     normalized_text = normalize_markdown(text)
     html = markdown.markdown(
         normalized_text,

@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""
+Сервис пользовательской работы со статьями базы знаний.
+
+Модуль отвечает за чтение метаданных статей из подготовленного корпуса,
+сборку текста статьи из чанков, фильтрацию "мусорных" секций и подготовку
+карточек источников для веб-интерфейса. Это позволяет не смешивать
+представление пользовательских статей с техническими внутренними полями.
+"""
+
 import csv
 import json
 import os
@@ -34,10 +43,14 @@ GENERIC_SECTIONS = {
 
 
 def _normalize_text(value: str) -> str:
+    # Для сравнения и отображения метаданных удобнее заранее убрать
+    # лишние пробелы и переводы строк, которые часто встречаются в корпусе.
     return re.sub(r"\s+", " ", (value or "").strip())
 
 
 def _public_doc_allowed(doc_id: str, title: str) -> bool:
+    # В подготовленных данных встречаются служебные и битые артефакты вида ._*
+    # Их нельзя показывать пользователю ни в каталоге, ни в источниках ответа.
     if not doc_id or doc_id.startswith("._") or doc_id.startswith(".__"):
         return False
     clean_title = _normalize_text(title)
@@ -45,6 +58,8 @@ def _public_doc_allowed(doc_id: str, title: str) -> bool:
 
 
 def is_meaningful_section(section: str) -> bool:
+    # Не каждый заголовок секции полезен пользователю.
+    # Здесь отсекаются слишком общие и технические значения вроде "Раздел" или "Ответ".
     cleaned = _normalize_text(section).lstrip("#").strip()
     if not cleaned:
         return False
@@ -63,6 +78,8 @@ def is_meaningful_section(section: str) -> bool:
 
 
 def _build_source_excerpt(chunk_text: str, section: str) -> str:
+    # Краткая выдержка нужна для карточки источника: она помогает понять,
+    # почему именно эта статья попала в ответ, не открывая документ целиком.
     text = (chunk_text or "").strip()
     if not text:
         return ""
@@ -84,6 +101,8 @@ def _build_source_excerpt(chunk_text: str, section: str) -> str:
 
 
 def _load_doc_index() -> Dict[str, Dict]:
+    # Если рядом с нормализованными markdown-статьями есть CSV-индекс,
+    # берем из него дополнительные поля: автора, дату и original_url.
     index: Dict[str, Dict] = {}
     index_path = NORMALIZED_INDEX_DEFAULT
     if not index_path.exists():
@@ -99,6 +118,8 @@ def _load_doc_index() -> Dict[str, Dict]:
 
 
 def _merge_with_overlap(existing: str, incoming: str, max_overlap: int = 240) -> str:
+    # При сборке статьи из чанков нужно аккуратно склеить соседние куски,
+    # не дублируя общий текст в месте overlap.
     existing = existing.rstrip()
     incoming = incoming.lstrip()
     if not existing:
@@ -114,6 +135,8 @@ def _merge_with_overlap(existing: str, incoming: str, max_overlap: int = 240) ->
 
 
 def _strip_duplicate_heading(text: str, section_heading: str) -> str:
+    # Чанк может начинаться с того же заголовка, который уже хранится
+    # в его метаданных. Для пользовательской статьи такой дубль убираем.
     cleaned_section = _normalize_text(section_heading).lstrip("#").strip()
     if not cleaned_section:
         return text.strip()
@@ -130,6 +153,8 @@ def _strip_duplicate_heading(text: str, section_heading: str) -> str:
 
 @lru_cache(maxsize=1)
 def get_documents_map() -> Dict[str, Dict]:
+    # Карта документов кэшируется, потому что статьи часто переиспользуются:
+    # в каталоге, на странице статьи, в карточках источников и при скачивании.
     documents: Dict[str, Dict] = OrderedDict()
     doc_index = _load_doc_index()
 
@@ -168,6 +193,8 @@ def get_documents_map() -> Dict[str, Dict]:
             doc["chunks"].append(row)
 
     for doc in documents.values():
+        # Сначала сортируем чанки в естественном порядке документа,
+        # а затем собираем две версии текста: полную и пользовательскую.
         doc["chunks"].sort(key=lambda chunk: (chunk.get("chunk_index", 0), chunk.get("chunk_part_in_section", 0)))
         doc["markdown_text"] = build_article_markdown(doc)
         doc["body_markdown_text"] = build_article_body_markdown(doc)
@@ -177,6 +204,8 @@ def get_documents_map() -> Dict[str, Dict]:
 
 
 def get_documents_list(limit: int | None = None) -> List[Dict]:
+    # Каталог статей сортируется по заголовку, чтобы пользователь видел
+    # предсказуемый и стабильный список материалов.
     documents = list(get_documents_map().values())
     documents.sort(key=lambda item: item["title"].lower())
     if limit is None:
@@ -192,6 +221,9 @@ def get_document_or_404(doc_id: str) -> Dict:
 
 
 def build_source_cards(results: List) -> List[Dict]:
+    # Здесь из retrieval-результатов строятся карточки источников для выдачи.
+    # На этом этапе намеренно скрываются технические поля, чтобы интерфейс
+    # показывал только полезную пользователю информацию.
     documents = get_documents_map()
     cards: List[Dict] = []
     seen = set()
@@ -224,6 +256,8 @@ def build_source_cards(results: List) -> List[Dict]:
 
 
 def build_article_markdown(document: Dict) -> str:
+    # Полный markdown статьи используется для скачивания и для внутренних задач.
+    # Он собирается из чанков так, чтобы сохранить структуру исходного документа.
     lines: List[str] = [f"# {document['title']}"]
     if document.get("breadcrumbs"):
         lines.append("")
@@ -260,6 +294,8 @@ def build_article_markdown(document: Dict) -> str:
 
 
 def build_article_body_markdown(document: Dict) -> str:
+    # Для HTML-страницы статьи убираем дублирующий заголовок и блок навигации,
+    # потому что эти данные уже показаны в пользовательской шапке страницы.
     markdown_text = build_article_markdown(document).strip()
     if not markdown_text:
         return ""
@@ -285,6 +321,8 @@ def build_article_body_markdown(document: Dict) -> str:
 
 
 def _render_section_block(section: str, text: str) -> List[str]:
+    # Если секция не определена явно, подставляем нейтральный заголовок,
+    # чтобы текст статьи не превращался в неструктурированный поток.
     block: List[str] = ["", section or "## Материал", ""]
     if text.strip():
         block.append(text.strip())
@@ -296,6 +334,8 @@ def normalized_markdown_path(document: Dict) -> Path:
 
 
 def article_download_payload(document: Dict) -> bytes:
+    # Приоритет отдается реальному markdown-файлу, если он существует на диске.
+    # Если файла нет, пользователю все равно отдается собранная версия статьи.
     normalized_path = normalized_markdown_path(document)
     if normalized_path.exists():
         return normalized_path.read_bytes()
@@ -303,6 +343,8 @@ def article_download_payload(document: Dict) -> bytes:
 
 
 def build_content_disposition(download_name: str) -> str:
+    # Заголовок формируется в двух вариантах: безопасный ASCII и UTF-8.
+    # Это нужно, чтобы скачивание работало даже для имен файлов с кириллицей.
     filename = (download_name or "article.md").strip()
     if not filename.lower().endswith(".md"):
         filename = f"{filename}.md"

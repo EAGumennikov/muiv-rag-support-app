@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""
+Сервис генерации ответа поверх retrieval-результатов.
+
+Модуль получает релевантные чанки из retrieval_service, подготавливает
+контекст и prompt для внешней LLM, а затем возвращает готовый ответ
+вместе со списком пользовательских источников и debug-данными.
+"""
+
 from typing import Dict, List, Tuple
 
 from scripts.common_paths import CHUNK_MAP_PATH_DEFAULT, INDEX_PATH_DEFAULT
@@ -22,6 +30,9 @@ def build_context_blocks(
     results: List[RetrievalResult],
     max_context_chars: int,
 ) -> Tuple[str, List[str]]:
+    # Из списка найденных чанков формируется текстовый контекст для prompt.
+    # Одновременно собираются короткие подписи источников, которые потом
+    # используются и в CLI, и при сохранении ответа в БД.
     blocks = []
     source_labels = []
     total_len = 0
@@ -32,6 +43,8 @@ def build_context_blocks(
         section = human_section(chunk.get("section_heading", ""))
         text = chunk.get("chunk_text", "").strip()
 
+        # Сохраняем единый формат блока, чтобы модель видела не только текст,
+        # но и заголовок статьи, breadcrumbs и секцию.
         block = (
             f"[Источник {idx}]\n"
             f"Статья: {title}\n"
@@ -52,6 +65,8 @@ def build_context_blocks(
 
 
 def build_prompt(query: str, context_blocks: str) -> str:
+    # Prompt строится максимально прикладным: модель должна опираться
+    # только на найденные источники и не "додумывать" решение вне контекста.
     return f"""Ты - помощник базы знаний службы поддержки пользователей.
 
 Ответь на вопрос только по переданным источникам.
@@ -75,6 +90,8 @@ def build_prompt(query: str, context_blocks: str) -> str:
 
 
 def print_retrieval_preview(results: List[RetrievalResult]) -> None:
+    # Отдельная функция нужна для CLI-сценария отладки retrieval:
+    # она показывает, какие именно фрагменты будут участвовать в ответе.
     print("\nНайденные фрагменты\n")
     print("=" * 80)
     for rank, (score, chunk) in enumerate(results, start=1):
@@ -96,6 +113,9 @@ def generate_answer_from_query(
     model_name: str = MODEL_NAME_DEFAULT,
     max_context_chars: int = MAX_CONTEXT_CHARS_DEFAULT,
 ) -> Dict:
+    # Это центральная точка RAG-пайплайна для веб-приложения и CLI.
+    # На вход приходит вопрос пользователя, на выходе — итоговый ответ,
+    # карточки источников, prompt и данные для сохранения истории.
     query = query.strip()
     if not query:
         raise ValueError("Пустой запрос")
@@ -108,6 +128,8 @@ def generate_answer_from_query(
         model_name=model_name,
     )
     if not results:
+        # Пустой retrieval не является аварией: пользователю лучше явно
+        # вернуть понятное сообщение, чем скрытую техническую ошибку.
         return {
             "query": query,
             "answer": "По запросу не удалось найти релевантные фрагменты в индексированном корпусе.",
@@ -127,6 +149,8 @@ def generate_answer_from_query(
     )
     prompt = build_prompt(query, context_blocks)
     answer = generate_answer(prompt)
+    # Карточки источников готовятся отдельно от prompt, потому что у интерфейса
+    # и у модели разные требования к представлению одного и того же источника.
     source_cards = build_source_cards(results)
 
     return {

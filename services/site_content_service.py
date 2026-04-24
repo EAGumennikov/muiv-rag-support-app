@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""
+Сервис со статическим контентом публичных страниц сайта.
+
+В учебном проекте тексты разделов вынесены из Flask-маршрутов в отдельный
+модуль, чтобы код приложения не превращался в смесь логики и длинных описаний.
+Это упрощает поддержку структуры сайта и делает набор страниц более явным.
+"""
+
 from typing import Dict, List
 
 
@@ -208,8 +216,12 @@ PAGE_BY_ENDPOINT = {page["endpoint"]: page for page in PUBLIC_PAGES}
 
 
 def get_public_navigation() -> List[Dict]:
+    # Навигация берется из единого списка страниц, чтобы меню и маршруты
+    # всегда оставались согласованными между собой.
     return PUBLIC_PAGES
 
 
 def get_page_by_endpoint(endpoint: str) -> Dict:
+    # По endpoint Flask получает готовое описание страницы:
+    # заголовок, текст, подпись меню и содержимое.
     return PAGE_BY_ENDPOINT[endpoint]
