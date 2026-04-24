@@ -11,6 +11,7 @@ from services.article_service import (
     get_document_or_404,
     get_documents_list,
 )
+from services.db_service import initialize_database, save_search_interaction
 from services.feedback_service import save_feedback
 from services.markdown_service import render_markdown
 from services.site_content_service import get_page_by_endpoint, get_public_navigation
@@ -58,6 +59,7 @@ def render_search_page(
 def create_app() -> Flask:
     app = Flask(__name__)
     app.jinja_env.filters["markdown_to_html"] = render_markdown
+    initialize_database()
 
     @app.context_processor
     def inject_site_navigation():
@@ -98,6 +100,12 @@ def create_app() -> Flask:
             if is_json_request:
                 return jsonify({"error": error_message}), 500
             return render_search_page(question=question, error_message=error_message), 500
+
+        try:
+            save_search_interaction(question=question, result=result, channel="web")
+        except Exception:
+            # Ошибки сохранения истории не должны ломать основной пользовательский сценарий.
+            pass
 
         if is_json_request:
             return jsonify(
