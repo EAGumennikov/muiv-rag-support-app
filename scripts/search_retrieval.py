@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+CLI-скрипт для ручной проверки retrieval-слоя.
+
+Он позволяет без веб-приложения посмотреть, какие фрагменты корпуса находит
+семантический поиск по вопросу пользователя. Скрипт удобен для отладки индекса
+и для демонстрации работы retrieval как отдельного шага RAG-контура.
+"""
+
 import argparse
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent
+# Добавляем корень проекта в sys.path, чтобы CLI-скрипт напрямую использовал
+# тот же сервисный слой, что и веб-приложение.
 if str(REPO_DIR) not in sys.path:
     sys.path.insert(0, str(REPO_DIR))
 
@@ -20,6 +30,8 @@ from services.retrieval_service import (
 
 
 def format_result(rank, score, chunk):
+    # Форматированный вывод помогает увидеть не только текст,
+    # но и техническую структуру найденного фрагмента.
     title = chunk.get("title", "")
     section = chunk.get("section_heading", "")
     breadcrumbs = " > ".join(chunk.get("breadcrumbs", []))
@@ -41,6 +53,8 @@ def format_result(rank, score, chunk):
 
 
 def main():
+    # Скрипт принимает минимальный набор параметров поиска и печатает
+    # top-k результатов в текстовом виде для ручного анализа.
     parser = argparse.ArgumentParser(description="Semantic search over Astra Linux chunk index")
     parser.add_argument("--query", required=True, help="Вопрос пользователя")
     parser.add_argument("--top-k", type=int, default=TOP_K_DEFAULT)

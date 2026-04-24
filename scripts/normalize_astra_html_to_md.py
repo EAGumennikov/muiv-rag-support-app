@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Скрипт нормализации HTML-корпуса базы знаний в markdown-формат.
+
+Он является самым ранним этапом подготовки корпуса для RAG: из исходных
+HTML-страниц извлекаются заголовки, breadcrumbs, ссылки, автор, дата,
+вложения и основной текст. Результатом становится набор markdown-документов
+и индекс метаданных, которые затем используются при чанкинге и индексации.
+"""
+
 import os
 import re
 import csv
@@ -21,6 +30,8 @@ NON_ATTACHMENT_EXTS = {".html", ".htm", ".css", ".js", ".map", ".json", ""}
 
 
 def safe_text(value):
+    # Базовая очистка текста нужна почти на всех этапах:
+    # убираем лишние пробелы, HTML entities и пустые строки.
     if value is None:
         return ""
     value = html.unescape(value)
@@ -32,6 +43,8 @@ def safe_text(value):
 
 
 def strip_tags(raw):
+    # Для извлечения "чистого" текста убираем не только теги,
+    # но и содержимое script/style, которое не несет ценности для корпуса.
     raw = re.sub(r"<script\b.*?</script>", " ", raw, flags=re.I | re.S)
     raw = re.sub(r"<style\b.*?</style>", " ", raw, flags=re.I | re.S)
     raw = re.sub(r"<[^>]+>", " ", raw, flags=re.S)
@@ -39,6 +52,8 @@ def strip_tags(raw):
 
 
 def read_file_with_fallback(path):
+    # Корпус может содержать файлы в разных кодировках,
+    # поэтому читаем их с несколькими вариантами fallback.
     encodings = ["utf-8", "utf-8-sig", "cp1251", "latin-1"]
     for enc in encodings:
         try:
@@ -53,6 +68,8 @@ def read_file_with_fallback(path):
 
 
 def sanitize_filename(text, max_len=90):
+    # Имя markdown-файла должно быть безопасным для файловой системы,
+    # но при этом оставаться узнаваемым для человека.
     text = safe_text(text)
     text = text.replace("/", "_").replace("\\", "_").replace(":", "_")
     text = text.replace("*", "_").replace("?", "_").replace('"', "_")
@@ -79,6 +96,8 @@ def relpath_safe(path, start):
 
 
 def resolve_local_ref(base_dir, ref, input_root):
+    # Внутренние ссылки в HTML приводим к относительному виду,
+    # чтобы потом можно было различать изображения, вложения и прочие ресурсы.
     if not ref:
         return ""
 
@@ -100,6 +119,8 @@ def resolve_local_ref(base_dir, ref, input_root):
 
 
 def classify_ref(ref):
+    # Классификация ссылок нужна для раздельного учета изображений и вложений
+    # в итоговых метаданных документа.
     low = ref.lower()
 
     if low.startswith(("http://", "https://", "mailto:", "javascript:")):
@@ -120,6 +141,8 @@ def classify_ref(ref):
 
 
 def extract_title(raw_html):
+    # Заголовок статьи сначала ищем в h1, а если его нет — в title.
+    # Такой порядок ближе к фактическому пользовательскому представлению страницы.
     m = re.search(r"<h1\b[^>]*>(.*?)</h1>", raw_html, flags=re.I | re.S)
     if m:
         title = strip_tags(m.group(1))
@@ -136,6 +159,8 @@ def extract_title(raw_html):
 
 
 def extract_breadcrumbs(raw_html):
+    # Хлебные крошки извлекаются из ссылок до первого h1 —
+    # это помогает восстановить место статьи в иерархии базы знаний.
     h1_match = re.search(r"<h1\b[^>]*>", raw_html, flags=re.I | re.S)
     search_part = raw_html[:h1_match.start()] if h1_match else raw_html[:50000]
 
@@ -163,6 +188,8 @@ def extract_breadcrumbs(raw_html):
 
 
 def extract_author_and_date(raw_html):
+    # Автор и дата могут встречаться в разных текстовых шаблонах,
+    # поэтому функция проверяет несколько типовых паттернов.
     page_text = strip_tags(raw_html[:50000])
 
     author = ""
@@ -190,6 +217,8 @@ def extract_author_and_date(raw_html):
 
 
 def extract_original_url(raw_html):
+    # canonical/og:url сохраняем отдельно, чтобы в веб-интерфейсе
+    # можно было показать ссылку на исходную страницу.
     patterns = [
         r'<link[^>]+rel=["\']canonical["\'][^>]+href=["\'](.*?)["\']',
         r'<meta[^>]+property=["\']og:url["\'][^>]+content=["\'](.*?)["\']',
@@ -203,6 +232,8 @@ def extract_original_url(raw_html):
 
 
 def remove_simple_toc(markdown_body):
+    # Некоторые статьи содержат короткое оглавление "Окружение / Вопрос / Ответ".
+    # Его стараемся убрать, чтобы в markdown не было лишнего дубля структуры.
     lines = markdown_body.splitlines()
     cleaned_lines = []
     toc_buffer = []
@@ -228,6 +259,8 @@ def remove_simple_toc(markdown_body):
 
 
 class MarkdownExtractor(HTMLParser):
+    # HTMLParser используется как простой и управляемый способ
+    # последовательно перевести HTML-структуру в markdown-текст.
     def __init__(self, input_root, current_dir):
         super().__init__(convert_charrefs=True)
         self.input_root = input_root
@@ -248,6 +281,8 @@ class MarkdownExtractor(HTMLParser):
         self.out.append("\n" * n)
 
     def handle_starttag(self, tag, attrs):
+        # Здесь закладываются правила перевода HTML-тегов в markdown:
+        # заголовки, абзацы, списки, ссылки, изображения и кодовые блоки.
         attrs = dict(attrs)
 
         if tag in {"script", "style", "noscript", "svg"}:

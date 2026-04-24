@@ -1,12 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+CLI-пайплайн полного RAG-сценария: retrieval -> prompt -> answer.
+
+Скрипт полезен для пошаговой отладки без Flask: можно отдельно посмотреть
+готовый prompt или получить реальный ответ модели. Это позволяет проверять
+качество retrieval и prompt-инженерии параллельно с веб-контуром.
+"""
+
 import argparse
 import sys
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_DIR = SCRIPT_DIR.parent
+# Импортируем сервисный слой из репозитория так же, как это делает Flask.
 if str(REPO_DIR) not in sys.path:
     sys.path.insert(0, str(REPO_DIR))
 
@@ -29,6 +38,8 @@ MODE_DEFAULT = "prompt-only"
 
 
 def main():
+    # Через режимы можно по-разному использовать один и тот же пайплайн:
+    # либо вывести только prompt, либо выполнить полный вызов внешней LLM.
     parser = argparse.ArgumentParser(description="Generate answer pipeline over retrieval")
     parser.add_argument("--query", required=True, help="Вопрос пользователя")
     parser.add_argument("--top-k", type=int, default=TOP_K_DEFAULT)
@@ -65,6 +76,8 @@ def main():
     prompt = build_prompt(args.query, context_blocks)
 
     if args.mode == "prompt-only":
+        # Этот режим особенно полезен при учебной отладке:
+        # можно анализировать prompt без затрат на вызов модели.
         print("\nГотовый prompt\n")
         print("=" * 80)
         print(prompt)
@@ -78,6 +91,8 @@ def main():
         print("\nСформированный ответ\n")
         print("=" * 80)
         try:
+            # Веб-приложение и CLI используют одну и ту же функцию генерации,
+            # чтобы поведение пайплайна не расходилось между контурами.
             payload = generate_answer_from_query(
                 query=args.query,
                 top_k=args.top_k,

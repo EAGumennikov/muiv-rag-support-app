@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Скрипт построения эмбеддингов и векторного индекса для retrieval-слоя.
+
+Он берет подготовленные чанки корпуса, превращает их в embeddings и
+создает FAISS-индекс для последующего семантического поиска. Скрипт
+является связующим звеном между подготовкой корпуса и реальным RAG-поиском.
+"""
+
 import os
 import json
 import argparse
@@ -36,10 +44,14 @@ BATCH_SIZE_DEFAULT = 64
 
 
 def ensure_parent(path: str) -> None:
+    # Каталоги под embeddings, индекс и статистику создаются автоматически,
+    # потому что runtime-артефакты хранятся во внешнем workdir.
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
 def load_chunks(jsonl_path: str) -> List[Dict]:
+    # Загружаем уже подготовленные чанки, которые были получены
+    # на предыдущем этапе обработки markdown-корпуса.
     chunks = []
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
@@ -55,6 +67,8 @@ def load_chunks(jsonl_path: str) -> List[Dict]:
 
 
 def build_text_for_embedding(chunk: Dict) -> str:
+    # Для эмбеддинга используем не только основной текст, но и заголовок/секцию.
+    # Это повышает шанс, что retrieval будет учитывать контекст документа.
     title = chunk.get("title", "")
     section_heading = chunk.get("section_heading", "")
     chunk_text = chunk.get("chunk_text", "")
@@ -71,6 +85,8 @@ def build_text_for_embedding(chunk: Dict) -> str:
 
 
 def save_chunk_map(chunks: List[Dict], path: str) -> None:
+    # Отдельно сохраняем карту чанков, чтобы retrieval мог восстановить
+    # текст и метаданные по номеру найденного вектора.
     ensure_parent(path)
     with open(path, "w", encoding="utf-8") as f:
         for ch in chunks:
@@ -78,6 +94,8 @@ def save_chunk_map(chunks: List[Dict], path: str) -> None:
 
 
 def write_stats(path: str, *, model_name: str, chunk_count: int, dim: int, faiss_used: bool) -> None:
+    # Статистика полезна для учебной части проекта: по ней видно,
+    # какая модель использовалась и сколько фрагментов попало в индекс.
     ensure_parent(path)
     with open(path, "w", encoding="utf-8") as f:
         f.write("Статистика индексирования\n")
@@ -88,6 +106,8 @@ def write_stats(path: str, *, model_name: str, chunk_count: int, dim: int, faiss
 
 
 def main():
+    # Скрипт поддерживает параметризацию через CLI, чтобы можно было
+    # экспериментировать с путями, моделью и batch size без правки кода.
     parser = argparse.ArgumentParser(description="Build embeddings and vector index for RAG")
     parser.add_argument("--input-jsonl", default=INPUT_JSONL_DEFAULT)
     parser.add_argument("--output-embeddings", default=OUTPUT_EMBEDDINGS_DEFAULT)
@@ -137,6 +157,8 @@ def main():
 
     if FAISS_AVAILABLE:
         print("Построение FAISS IndexFlatIP...")
+        # Используем IndexFlatIP, потому что эмбеддинги уже нормализованы,
+        # а значит inner product эквивалентен косинусной близости.
         index = faiss.IndexFlatIP(dim)
         index.add(embeddings)
         ensure_parent(args.output_index)

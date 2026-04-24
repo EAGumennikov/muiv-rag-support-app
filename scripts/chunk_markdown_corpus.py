@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Скрипт разбиения markdown-корпуса на чанки для retrieval и индексации.
+
+После нормализации HTML-документов проект получает длинные markdown-статьи.
+Этот скрипт превращает их в фрагменты подходящего размера, сохраняя связь
+с doc_id, breadcrumbs и секциями. Именно эти чанки затем индексируются
+и используются как контекст для генерации ответа.
+"""
+
 import os
 import re
 import csv
@@ -20,6 +29,8 @@ MERGE_SMALLER_THAN_DEFAULT = 900
 
 
 def safe_text(value):
+    # Единая очистка текста нужна, чтобы все дальнейшие операции
+    # работали уже с нормализованным markdown без лишнего "шума".
     if value is None:
         return ""
     value = value.replace("\r", "")
@@ -37,6 +48,8 @@ def strip_yaml_quotes(value):
 
 
 def parse_front_matter(md_text):
+    # Из markdown-документа отделяем front matter и тело статьи.
+    # Метаданные понадобятся для связи чанка с исходным документом.
     md_text = md_text.replace("\r", "")
     if not md_text.startswith("---\n"):
         return {}, md_text
@@ -84,12 +97,16 @@ def parse_front_matter(md_text):
 
 
 def normalize_compare_text(text):
+    # Нормализованное сравнение помогает безопасно сопоставлять
+    # breadcrumb-строки и повторяющийся текст независимо от форматирования.
     text = safe_text(text)
     text = re.sub(r"\s+", " ", text)
     return text.strip().lower()
 
 
 def remove_leading_breadcrumb_lines(lines, breadcrumbs):
+    # В некоторых документах breadcrumbs дублируются в начале раздела списком.
+    # Для чанка это бесполезный шум, поэтому стараемся его убрать.
     normalized_breadcrumbs = {normalize_compare_text(x) for x in breadcrumbs if safe_text(x)}
     out = list(lines)
 
@@ -108,6 +125,8 @@ def remove_leading_breadcrumb_lines(lines, breadcrumbs):
 
 
 def split_into_sections(md_body):
+    # Сначала разбиваем документ на смысловые секции по markdown-заголовкам.
+    # Это помогает позже не резать текст полностью "вслепую".
     md_body = safe_text(md_body)
     lines = md_body.splitlines()
 
@@ -141,6 +160,8 @@ def split_into_sections(md_body):
 
 
 def clean_section_text(heading, text, title, breadcrumbs):
+    # На этом этапе удаляем заведомо бесполезные или дублирующиеся части:
+    # служебные списки, повтор заголовка статьи и повтор breadcrumbs.
     text = safe_text(text)
     if not text:
         return ""
@@ -168,6 +189,8 @@ def clean_section_text(heading, text, title, breadcrumbs):
     return text
 
 def hard_split(text, target_chars, overlap_chars):
+    # Жесткое разбиение используется как запасной вариант,
+    # когда текст слишком длинный и его нельзя аккуратно поделить по абзацам.
     text = safe_text(text)
     if len(text) <= target_chars:
         return [text]
@@ -196,6 +219,8 @@ def hard_split(text, target_chars, overlap_chars):
 
 
 def split_long_text(text, target_chars, overlap_chars):
+    # Основное разбиение старается учитывать абзацы и сохранять overlap,
+    # чтобы retrieval не терял связность соседних фрагментов.
     text = safe_text(text)
     if not text:
         return []
@@ -246,6 +271,8 @@ def split_long_text(text, target_chars, overlap_chars):
 
 
 def merge_small_chunks(chunks, merge_smaller_than):
+    # Слишком маленькие чанки обычно малоинформативны для retrieval,
+    # поэтому их объединяем с соседними фрагментами.
     if not chunks:
         return []
 
@@ -302,6 +329,8 @@ def merge_small_chunks(chunks, merge_smaller_than):
 
 
 def build_chunks_for_doc(doc_meta, md_body, target_chars, overlap_chars, min_chars, merge_smaller_than):
+    # Функция собирает весь набор чанков для одного документа,
+    # сохраняя метаданные статьи в каждом фрагменте.
     title = doc_meta.get("title", "")
     breadcrumbs = doc_meta.get("breadcrumbs", [])
     if not isinstance(breadcrumbs, list):
