@@ -170,6 +170,7 @@ def get_documents_map() -> Dict[str, Dict]:
     for doc in documents.values():
         doc["chunks"].sort(key=lambda chunk: (chunk.get("chunk_index", 0), chunk.get("chunk_part_in_section", 0)))
         doc["markdown_text"] = build_article_markdown(doc)
+        doc["body_markdown_text"] = build_article_body_markdown(doc)
         doc["download_name"] = doc["normalized_file"] or f"{doc['doc_id']}.md"
 
     return documents
@@ -256,6 +257,31 @@ def build_article_markdown(document: Dict) -> str:
         lines.extend(_render_section_block(current_section, section_body))
 
     return "\n".join(lines).strip() + "\n"
+
+
+def build_article_body_markdown(document: Dict) -> str:
+    markdown_text = build_article_markdown(document).strip()
+    if not markdown_text:
+        return ""
+
+    title_line = f"# {document['title']}".strip()
+    if markdown_text.startswith(title_line):
+        markdown_text = markdown_text[len(title_line):].lstrip()
+
+    navigation_heading = "## Навигация"
+    if markdown_text.startswith(navigation_heading):
+        lines = markdown_text.splitlines()
+        next_heading_index = 0
+        for index, line in enumerate(lines[1:], start=1):
+            stripped = line.strip()
+            if stripped.startswith("#") and stripped != navigation_heading:
+                next_heading_index = index
+                break
+
+        if next_heading_index:
+            markdown_text = "\n".join(lines[next_heading_index:]).lstrip()
+
+    return markdown_text.strip()
 
 
 def _render_section_block(section: str, text: str) -> List[str]:

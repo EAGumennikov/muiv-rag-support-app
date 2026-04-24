@@ -1,29 +1,54 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="panel article-header">
-    <span class="eyebrow">Статья базы знаний</span>
-    <h1>{{ article.title }}</h1>
-    <p class="muted-text">{{ article.breadcrumbs | join(" > ") }}</p>
-    <div class="meta-list">
+<section class="article-layout">
+    <article class="panel article-main">
+        <span class="eyebrow">Статья базы знаний</span>
+        <h1>{{ article.title }}</h1>
+        {% if article.breadcrumbs %}
+        <p class="muted-text article-path">{{ article.breadcrumbs | join(" > ") }}</p>
+        {% endif %}
+
+        {% if article_html %}
+        <div class="markdown-content article-content">
+            {{ article_html }}
+        </div>
+        {% else %}
+        <p class="placeholder-text">Содержимое статьи пока недоступно для отображения.</p>
+        {% endif %}
+    </article>
+
+    <aside class="panel article-sidebar">
+        <h2>Сведения о статье</h2>
+        <div class="article-meta-card">
+            <span class="article-meta-label">Заголовок</span>
+            <strong>{{ article.title }}</strong>
+        </div>
         {% if article.author %}
-        <span>Автор: {{ article.author }}</span>
+        <div class="article-meta-card">
+            <span class="article-meta-label">Автор</span>
+            <strong>{{ article.author }}</strong>
+        </div>
         {% endif %}
         {% if article.date %}
-        <span>Дата: {{ article.date }}</span>
+        <div class="article-meta-card">
+            <span class="article-meta-label">Дата</span>
+            <strong>{{ article.date }}</strong>
+        </div>
         {% endif %}
-    </div>
-    <div class="source-actions">
-        <a class="button-secondary" href="{{ url_for('download_article', doc_id=article.doc_id) }}">Скачать markdown</a>
-        {% if article.original_url %}
-        <a class="button-secondary" href="{{ article.original_url }}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+        {% if article.breadcrumbs %}
+        <div class="article-meta-card">
+            <span class="article-meta-label">Размещение</span>
+            <p>{{ article.breadcrumbs | join(" > ") }}</p>
+        </div>
         {% endif %}
-    </div>
-</section>
 
-<section class="panel">
-    <div class="markdown-content article-content">
-        {{ article_html }}
-    </div>
+        <div class="source-actions article-actions">
+            <a class="button-secondary" href="{{ url_for('download_article', doc_id=article.doc_id) }}">Скачать markdown</a>
+            {% if article.original_url %}
+            <a class="button-secondary" href="{{ article.original_url }}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+            {% endif %}
+        </div>
+    </aside>
 </section>
 {% endblock %}

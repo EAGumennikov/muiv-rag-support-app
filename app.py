@@ -193,7 +193,7 @@ def create_app() -> Flask:
             "article_detail.html",
             page_title=document["title"],
             article=document,
-            article_html=render_markdown(document["markdown_text"]),
+            article_html=render_markdown(document["body_markdown_text"]),
             breadcrumbs=build_breadcrumbs(
                 ("Статьи", url_for("articles_page")),
                 (document["title"], None),

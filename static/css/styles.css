@@ -388,6 +388,52 @@ img {
     margin-top: 0.9rem;
 }
 
+.article-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.article-main,
+.article-sidebar {
+    margin-bottom: 0;
+}
+
+.article-path {
+    margin-bottom: 1.35rem;
+}
+
+.article-sidebar h2 {
+    margin-bottom: 1rem;
+}
+
+.article-meta-card {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+}
+
+.article-meta-card + .article-meta-card {
+    margin-top: 0.9rem;
+}
+
+.article-meta-card p {
+    margin: 0;
+}
+
+.article-meta-label {
+    display: block;
+    margin-bottom: 0.3rem;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.article-actions {
+    margin-top: 1.2rem;
+}
+
 .debug-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -525,7 +571,8 @@ img {
     .hero,
     .hero-compact,
     .results-grid,
-    .card-grid {
+    .card-grid,
+    .article-layout {
         grid-template-columns: 1fr;
     }
 }
