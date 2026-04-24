@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel panel-wide">
+    <span class="eyebrow">Аутентификация</span>
+    <h1>Вход в систему</h1>
+    <p class="lead-text">
+        Вход нужен для доступа к личным кабинетам, рабочим функциям сотрудников и административному контуру.
+    </p>
+
+    <form class="question-form" action="{{ url_for('login_page') }}" method="post">
+        <input type="hidden" name="next" value="{{ next_url }}">
+
+        <label for="username">Логин</label>
+        <input id="username" name="username" type="text" placeholder="Например: admin">
+
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" placeholder="Введите пароль">
+
+        <button type="submit">Войти</button>
+
+        {% if error_message %}
+        <div class="status-message status-error">{{ error_message }}</div>
+        {% endif %}
+    </form>
+</section>
+{% endblock %}
