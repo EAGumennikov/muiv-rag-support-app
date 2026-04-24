@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="secure-layout">
+    <aside class="panel secure-sidebar">
+        <span class="eyebrow">{{ section_label }}</span>
+        <h2>{{ navigation_title }}</h2>
+        <nav class="secure-nav" aria-label="{{ navigation_title }}">
+            {% for item in section_navigation %}
+            <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">
+                {{ item.title }}
+            </a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <section class="panel secure-main">
+        <span class="eyebrow">{{ section_label }}</span>
+        <h1>{{ page.heading }}</h1>
+        <p class="lead-text">{{ page.summary }}</p>
+
+        {% if info_cards %}
+        <div class="secure-card-grid">
+            {% for card in info_cards %}
+            <article class="info-card">
+                <span class="article-meta-label">{{ card.label }}</span>
+                <strong>{{ card.value }}</strong>
+                {% if card.note %}
+                <p class="muted-text">{{ card.note }}</p>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if page.content %}
+        <div class="markdown-content">
+            {{ page.content | markdown_to_html }}
+        </div>
+        {% endif %}
+
+        {% if records %}
+        <div class="panel panel-nested">
+            <h2>{{ records_title }}</h2>
+            <div class="records-list">
+                {% for row in records %}
+                <article class="record-item">
+                    {% for key, value in row.items() %}
+                    <p><strong>{{ key }}:</strong> {{ value if value is string or value is number else value | join(", ") }}</p>
+                    {% endfor %}
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+        {% elif records_title %}
+        <div class="panel panel-nested">
+            <h2>{{ records_title }}</h2>
+            <p class="placeholder-text">{{ empty_message }}</p>
+        </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

@@ -12,8 +12,23 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from sqlalchemy import func
+
 from db.base import init_database, session_scope
-from db.models import Article, AuditLog, FeedbackMessage, RagAnswer, RagAnswerSource, SearchQuery
+from db.models import (
+    Article,
+    AuditLog,
+    FeedbackMessage,
+    FaqItem,
+    GlossaryTerm,
+    OnboardingPage,
+    RagAnswer,
+    RagAnswerSource,
+    Role,
+    SearchQuery,
+    User,
+    UserRole,
+)
 
 
 def initialize_database() -> None:
@@ -186,3 +201,148 @@ def _upsert_article_reference_in_session(*, session, doc_id: str, title: str, br
     if original_url and not article.original_url:
         article.original_url = original_url
     return article
+
+
+def list_users_with_roles() -> list[dict[str, Any]]:
+    # Список пользователей нужен для административной страницы управления доступом.
+    with session_scope() as session:
+        users = session.query(User).order_by(User.username.asc()).all()
+        payload = []
+        for user in users:
+            roles = [
+                role.code
+                for role in (
+                    session.query(Role)
+                    .join(UserRole, UserRole.role_id == Role.id)
+                    .filter(UserRole.user_id == user.id)
+                    .order_by(Role.code.asc())
+                    .all()
+                )
+            ]
+            payload.append(
+                {
+                    "id": user.id,
+                    "username": user.username,
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "is_active": user.is_active,
+                    "roles": roles,
+                }
+            )
+        return payload
+
+
+def list_roles_summary() -> list[dict[str, Any]]:
+    with session_scope() as session:
+        rows = (
+            session.query(Role, func.count(UserRole.id))
+            .outerjoin(UserRole, UserRole.role_id == Role.id)
+            .group_by(Role.id)
+            .order_by(Role.code.asc())
+            .all()
+        )
+        return [
+            {
+                "code": role.code,
+                "name": role.name,
+                "description": role.description,
+                "users_count": users_count,
+            }
+            for role, users_count in rows
+        ]
+
+
+def list_feedback_messages(limit: int = 20) -> list[dict[str, Any]]:
+    with session_scope() as session:
+        rows = (
+            session.query(FeedbackMessage)
+            .order_by(FeedbackMessage.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "name": row.name,
+                "email": row.email,
+                "topic": row.topic,
+                "status": row.status,
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+            }
+            for row in rows
+        ]
+
+
+def list_recent_search_queries(limit: int = 20) -> list[dict[str, Any]]:
+    with session_scope() as session:
+        rows = (
+            session.query(SearchQuery)
+            .order_by(SearchQuery.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "question_text": row.question_text,
+                "retrieved_chunks_count": row.retrieved_chunks_count,
+                "used_chunks_count": row.used_chunks_count,
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+            }
+            for row in rows
+        ]
+
+
+def list_recent_rag_answers(limit: int = 20) -> list[dict[str, Any]]:
+    with session_scope() as session:
+        rows = (
+            session.query(RagAnswer)
+            .order_by(RagAnswer.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "answer_text": row.answer_text[:240] + ("..." if len(row.answer_text) > 240 else ""),
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+            }
+            for row in rows
+        ]
+
+
+def list_recent_audit_logs(limit: int = 20) -> list[dict[str, Any]]:
+    with session_scope() as session:
+        rows = (
+            session.query(AuditLog)
+            .order_by(AuditLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "event_type": row.event_type,
+                "entity_type": row.entity_type,
+                "entity_id": row.entity_id,
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+            }
+            for row in rows
+        ]
+
+
+def get_admin_dashboard_stats() -> list[dict[str, Any]]:
+    with session_scope() as session:
+        return [
+            {"label": "Пользователи", "value": session.query(func.count(User.id)).scalar() or 0},
+            {"label": "Роли", "value": session.query(func.count(Role.id)).scalar() or 0},
+            {"label": "Сообщения feedback", "value": session.query(func.count(FeedbackMessage.id)).scalar() or 0},
+            {"label": "Поисковые запросы", "value": session.query(func.count(SearchQuery.id)).scalar() or 0},
+            {"label": "Статьи", "value": session.query(func.count(Article.id)).scalar() or 0},
+        ]
+
+
+def get_content_statistics() -> list[dict[str, Any]]:
+    with session_scope() as session:
+        return [
+            {"label": "Статьи", "value": session.query(func.count(Article.id)).scalar() or 0},
+            {"label": "Термины глоссария", "value": session.query(func.count(GlossaryTerm.id)).scalar() or 0},
+            {"label": "Страницы onboarding", "value": session.query(func.count(OnboardingPage.id)).scalar() or 0},
+            {"label": "FAQ-элементы", "value": session.query(func.count(FaqItem.id)).scalar() or 0},
+        ]

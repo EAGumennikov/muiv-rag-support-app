@@ -21,16 +21,37 @@ from services.article_service import (
     get_document_or_404,
     get_documents_list,
 )
+from services.access_content_service import (
+    get_admin_pages,
+    get_cabinet_pages,
+    get_editor_pages,
+    get_page_by_endpoint as get_secure_page_by_endpoint,
+)
 from services.auth_service import (
+    ROLE_ADMIN,
+    ROLE_KNOWLEDGE_EDITOR,
     SESSION_USER_ID_KEY,
     authenticate_user,
     current_user_from_context,
     get_current_user,
+    login_required,
     login_user,
     logout_user,
+    roles_required,
     user_primary_role_label,
 )
-from services.db_service import initialize_database, save_search_interaction
+from services.db_service import (
+    get_admin_dashboard_stats,
+    get_content_statistics,
+    initialize_database,
+    list_feedback_messages,
+    list_recent_audit_logs,
+    list_recent_rag_answers,
+    list_recent_search_queries,
+    list_roles_summary,
+    list_users_with_roles,
+    save_search_interaction,
+)
 from services.feedback_service import save_feedback
 from services.markdown_service import render_markdown
 from services.site_content_service import get_page_by_endpoint, get_public_navigation
@@ -80,6 +101,34 @@ def render_search_page(
         sources=sources or [],
         debug=debug or {},
         error_message=error_message,
+    )
+
+
+def render_secure_section(
+    *,
+    page: dict,
+    section_label: str,
+    navigation_title: str,
+    section_navigation: list[dict],
+    info_cards: list[dict] | None = None,
+    records: list[dict] | None = None,
+    records_title: str = "",
+    empty_message: str = "",
+):
+    # Общий шаблон нужен, чтобы кабинет, редакторский контур и админ-панель
+    # выглядели согласованно, но не дублировали одинаковую верстку в app.py.
+    return render_template(
+        "secure_page.html",
+        page_title=page["title"],
+        page=page,
+        section_label=section_label,
+        navigation_title=navigation_title,
+        section_navigation=section_navigation,
+        info_cards=info_cards or [],
+        records=records or [],
+        records_title=records_title,
+        empty_message=empty_message,
+        breadcrumbs=build_breadcrumbs((section_label, section_navigation[0]["route"]), (page["title"], None)),
     )
 
 
@@ -157,6 +206,225 @@ def create_app() -> Flask:
     def logout_page():
         logout_user()
         return redirect(url_for("index"))
+
+    @app.route("/cabinet")
+    @login_required
+    def cabinet_home():
+        user = current_user_from_context()
+        page = get_secure_page_by_endpoint("cabinet_home", get_cabinet_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+            info_cards=[
+                {"label": "Пользователь", "value": user.display_name, "note": user.username},
+                {"label": "Роль", "value": user_primary_role_label(user), "note": ", ".join(user.roles)},
+                {"label": "Статус", "value": "Активен" if user.is_active else "Неактивен", "note": user.email},
+            ],
+        )
+
+    @app.route("/cabinet/profile")
+    @login_required
+    def cabinet_profile():
+        user = current_user_from_context()
+        page = get_secure_page_by_endpoint("cabinet_profile", get_cabinet_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+            info_cards=[
+                {"label": "Полное имя", "value": user.display_name, "note": ""},
+                {"label": "Логин", "value": user.username, "note": ""},
+                {"label": "Электронная почта", "value": user.email or "Не указана", "note": ""},
+            ],
+        )
+
+    @app.route("/cabinet/history")
+    @login_required
+    def cabinet_history():
+        page = get_secure_page_by_endpoint("cabinet_history", get_cabinet_pages())
+        records = [
+            {
+                "Вопрос": row["question_text"],
+                "Найдено фрагментов": row["retrieved_chunks_count"],
+                "Использовано": row["used_chunks_count"],
+                "Время": row["created_at"],
+            }
+            for row in list_recent_search_queries(limit=10)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+            records=records,
+            records_title="Последние запросы",
+            empty_message="История запросов пока не накоплена.",
+        )
+
+    @app.route("/cabinet/saved-answers")
+    @login_required
+    def cabinet_saved_answers():
+        page = get_secure_page_by_endpoint("cabinet_saved_answers", get_cabinet_pages())
+        records = [
+            {
+                "Ответ": row["answer_text"],
+                "Создан": row["created_at"],
+            }
+            for row in list_recent_rag_answers(limit=10)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+            records=records,
+            records_title="Последние ответы системы",
+            empty_message="Сохраненные ответы пока отсутствуют.",
+        )
+
+    @app.route("/cabinet/help")
+    @login_required
+    def cabinet_help():
+        page = get_secure_page_by_endpoint("cabinet_help", get_cabinet_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+        )
+
+    @app.route("/editor/content")
+    @roles_required(ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+    def editor_content():
+        page = get_secure_page_by_endpoint("editor_content", get_editor_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Контур редактора",
+            navigation_title="Рабочие разделы редактора",
+            section_navigation=get_editor_pages(),
+            info_cards=get_content_statistics(),
+        )
+
+    @app.route("/admin")
+    @roles_required(ROLE_ADMIN)
+    def admin_home():
+        page = get_secure_page_by_endpoint("admin_home", get_admin_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            info_cards=get_admin_dashboard_stats(),
+        )
+
+    @app.route("/admin/users")
+    @roles_required(ROLE_ADMIN)
+    def admin_users():
+        page = get_secure_page_by_endpoint("admin_users", get_admin_pages())
+        records = [
+            {
+                "Логин": row["username"],
+                "ФИО": row["full_name"] or "Не указано",
+                "Email": row["email"] or "Не указан",
+                "Роли": row["roles"],
+                "Активность": "Да" if row["is_active"] else "Нет",
+            }
+            for row in list_users_with_roles()
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            records=records,
+            records_title="Пользователи системы",
+            empty_message="Пользователи пока не созданы.",
+        )
+
+    @app.route("/admin/roles")
+    @roles_required(ROLE_ADMIN)
+    def admin_roles():
+        page = get_secure_page_by_endpoint("admin_roles", get_admin_pages())
+        records = [
+            {
+                "Код": row["code"],
+                "Название": row["name"],
+                "Описание": row["description"],
+                "Пользователей": row["users_count"],
+            }
+            for row in list_roles_summary()
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            records=records,
+            records_title="Роли доступа",
+            empty_message="Роли пока не инициализированы.",
+        )
+
+    @app.route("/admin/feedback")
+    @roles_required(ROLE_ADMIN)
+    def admin_feedback():
+        page = get_secure_page_by_endpoint("admin_feedback", get_admin_pages())
+        records = [
+            {
+                "Имя": row["name"],
+                "Email": row["email"],
+                "Тема": row["topic"],
+                "Статус": row["status"],
+                "Время": row["created_at"],
+            }
+            for row in list_feedback_messages(limit=20)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            records=records,
+            records_title="Сообщения обратной связи",
+            empty_message="Сообщения обратной связи пока отсутствуют.",
+        )
+
+    @app.route("/admin/content")
+    @roles_required(ROLE_ADMIN)
+    def admin_content():
+        page = get_secure_page_by_endpoint("admin_content", get_admin_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            info_cards=get_content_statistics(),
+        )
+
+    @app.route("/admin/audit")
+    @roles_required(ROLE_ADMIN)
+    def admin_audit():
+        page = get_secure_page_by_endpoint("admin_audit", get_admin_pages())
+        records = [
+            {
+                "Событие": row["event_type"],
+                "Сущность": row["entity_type"] or "—",
+                "ID": row["entity_id"] or "—",
+                "Время": row["created_at"],
+            }
+            for row in list_recent_audit_logs(limit=20)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            records=records,
+            records_title="Журнал событий",
+            empty_message="События аудита пока отсутствуют.",
+        )
 
     @app.route("/ask", methods=["POST"])
     def ask():
