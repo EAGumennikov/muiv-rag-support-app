@@ -37,6 +37,7 @@ from services.auth_service import (
     login_required,
     login_user,
     logout_user,
+    user_has_any_role,
     roles_required,
     user_primary_role_label,
 )
@@ -155,6 +156,11 @@ def create_app() -> Flask:
             "public_navigation": get_public_navigation(),
             "current_user": current_user,
             "current_user_role_label": user_primary_role_label(current_user),
+            "cabinet_navigation": get_cabinet_pages() if current_user else [],
+            "editor_navigation": get_editor_pages()
+            if user_has_any_role(current_user, [ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN])
+            else [],
+            "admin_navigation": get_admin_pages() if user_has_any_role(current_user, [ROLE_ADMIN]) else [],
         }
 
     @app.route("/")
@@ -181,6 +187,9 @@ def create_app() -> Flask:
     def login_page():
         # В проекте нет открытой регистрации, поэтому вход строится
         # вокруг заранее подготовленных или вручную созданных учетных записей.
+        if current_user_from_context() is not None:
+            return redirect(url_for("cabinet_home"))
+
         error_message = ""
         next_url = request.args.get("next", "").strip() or request.form.get("next", "").strip()
 

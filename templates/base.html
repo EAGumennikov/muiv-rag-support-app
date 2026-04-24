@@ -9,15 +9,64 @@
 <body>
     <header class="site-header">
         <div class="container header-inner">
-            <a class="brand" href="{{ url_for('index') }}">MUIV RAG Support App</a>
-            <nav class="main-nav" aria-label="Основная навигация">
-                {% for item in public_navigation %}
-                <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">
-                    {{ item.menu_title }}
-                </a>
+            <div class="brand-block">
+                <a class="brand" href="{{ url_for('index') }}">MUIV RAG Support App</a>
+                {% if current_user %}
+                <div class="user-badge">
+                    <strong>{{ current_user.display_name }}</strong>
+                    <span>{{ current_user_role_label }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="header-navs">
+                <nav class="main-nav" aria-label="Основная навигация">
+                    {% for item in public_navigation %}
+                    <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">
+                        {{ item.menu_title }}
+                    </a>
+                    {% endfor %}
+                </nav>
+                <div class="auth-actions">
+                    {% if current_user %}
+                    <a class="button-secondary auth-link" href="{{ url_for('cabinet_home') }}">Кабинет</a>
+                    {% if editor_navigation %}
+                    <a class="button-secondary auth-link" href="{{ editor_navigation[0].route }}">Редактор</a>
+                    {% endif %}
+                    {% if admin_navigation %}
+                    <a class="button-secondary auth-link" href="{{ admin_navigation[0].route }}">Админка</a>
+                    {% endif %}
+                    <a class="button-secondary auth-link" href="{{ url_for('logout_page') }}">Выход</a>
+                    {% else %}
+                    <a class="button-secondary auth-link" href="{{ url_for('login_page') }}">Вход</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% if current_user and (cabinet_navigation or editor_navigation or admin_navigation) %}
+        <div class="container secondary-header">
+            {% if cabinet_navigation %}
+            <nav class="secondary-nav" aria-label="Навигация авторизованного пользователя">
+                {% for item in cabinet_navigation %}
+                <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">{{ item.title }}</a>
                 {% endfor %}
             </nav>
+            {% endif %}
+            {% if editor_navigation %}
+            <nav class="secondary-nav" aria-label="Навигация редактора">
+                {% for item in editor_navigation %}
+                <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">{{ item.title }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+            {% if admin_navigation %}
+            <nav class="secondary-nav" aria-label="Административная навигация">
+                {% for item in admin_navigation %}
+                <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">{{ item.title }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
         </div>
+        {% endif %}
     </header>
 
     <main class="container page-content">

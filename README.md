@@ -16,6 +16,7 @@
 - просмотр статьи и скачивание markdown по `doc_id`
 - SQL-слой приложения на SQLite с 10+ таблицами
 - хранение обратной связи и истории запросов в SQL-базе
+- контур пользователей, ролей, личных кабинетов и административного доступа
 
 ## Структура
 - app.py - точка входа Flask-приложения
@@ -56,6 +57,21 @@ Runtime-данные, виртуальное окружение, секреты 
 
 Веб-интерфейс использует существующий retrieval-контур и генерацию ответа через Yandex AI Studio по OpenAI-совместимому API.
 
+## Роли и доступ
+
+В приложении подготовлены и частично реализованы три авторизованные роли:
+- `support_user` - рабочие пользовательские функции и личный кабинет
+- `knowledge_editor` - рабочая зона редактора знаний и доступ к контентному контуру
+- `admin` - полный доступ к административным разделам
+
+Публичные страницы остаются доступными без входа.
+
+Основные маршруты по ролям:
+- публичный контур: `/`, `/search`, `/articles`, `/faq`, `/feedback` и другие открытые страницы
+- авторизованный пользователь: `/cabinet`, `/cabinet/profile`, `/cabinet/history`, `/cabinet/saved-answers`, `/cabinet/help`
+- редактор знаний и администратор: `/editor/content`
+- только администратор: `/admin`, `/admin/users`, `/admin/roles`, `/admin/feedback`, `/admin/content`, `/admin/audit`
+
 ## SQL-слой и SQLite
 
 В приложении добавлен демонстрационный SQL-слой на базе `SQLAlchemy`.
@@ -80,6 +96,24 @@ cd ~/Projects/muiv-rag-support-app
 source .venv/bin/activate
 python3 scripts/init_app_db.py
 ```
+
+Для создания демонстрационных ролей и тестовых пользователей:
+
+```bash
+cd ~/Projects/muiv-rag-support-app
+source .venv/bin/activate
+python3 scripts/init_demo_users.py
+```
+
+Тестовые учетные записи по умолчанию:
+- `admin / admin_demo_123`
+- `editor / editor_demo_123`
+- `support / support_demo_123`
+
+Значения можно переопределить через переменные окружения:
+- `RAG_DEMO_ADMIN_PASSWORD`
+- `RAG_DEMO_EDITOR_PASSWORD`
+- `RAG_DEMO_SUPPORT_PASSWORD`
 
 ## Локальный запуск веб-приложения
 
