@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+"""
+Главный Flask-модуль учебного веб-приложения.
+
+Здесь собирается публичный контур сайта: маршруты страниц, маршрут /ask,
+обработка формы обратной связи и выдача пользовательских страниц статей.
+Модуль не содержит тяжелой бизнес-логики RAG сам по себе, а связывает
+HTML-шаблоны с сервисным слоем, чтобы архитектура оставалась понятной:
+веб-уровень отвечает за маршрутизацию и отображение, а сервисы — за данные.
+"""
+
 import os
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, url_for
@@ -18,6 +28,8 @@ from services.site_content_service import get_page_by_endpoint, get_public_navig
 
 
 def build_breadcrumbs(*items: tuple[str, str | None]):
+    # Хлебные крошки собираются централизованно, чтобы все страницы сайта
+    # выглядели единообразно и не дублировали одну и ту же логику в шаблонах.
     crumbs = [{"label": "Главная", "url": url_for("index")}]
     for label, url in items:
         crumbs.append({"label": label, "url": url})
@@ -25,6 +37,9 @@ def build_breadcrumbs(*items: tuple[str, str | None]):
 
 
 def render_content_page(endpoint: str):
+    # Для статичных пользовательских разделов используем единый шаблон.
+    # Это упрощает поддержку сайта: тексты лежат в сервисе контента,
+    # а сами маршруты остаются короткими и наглядными.
     page = get_page_by_endpoint(endpoint)
     return render_template(
         "content_page.html",
@@ -42,6 +57,9 @@ def render_search_page(
     debug: dict | None = None,
     error_message: str = "",
 ):
+    # Экран поиска рендерится отдельной функцией, потому что один и тот же
+    # шаблон используется и при первом открытии страницы, и после отправки
+    # вопроса, и в случае ошибки обработки запроса.
     page = get_page_by_endpoint("search_page")
     return render_template(
         "search.html",
@@ -57,6 +75,8 @@ def render_search_page(
 
 
 def create_app() -> Flask:
+    # Создание приложения вынесено в фабрику, чтобы модуль было удобно
+    # импортировать как из локального запуска, так и из тестов.
     app = Flask(__name__)
     app.jinja_env.filters["markdown_to_html"] = render_markdown
     initialize_database()
@@ -67,6 +87,8 @@ def create_app() -> Flask:
 
     @app.route("/")
     def index():
+        # Главная страница показывает краткое описание проекта и несколько
+        # примеров статей, чтобы пользователь сразу видел предметную область.
         page = get_page_by_endpoint("index")
         highlighted_docs = get_documents_list(limit=6)
         return render_template(
@@ -79,10 +101,14 @@ def create_app() -> Flask:
 
     @app.route("/search")
     def search_page():
+        # Отдельная страница поиска нужна, чтобы маршрут /ask отвечал только
+        # за обработку вопроса, а не за рендер стартового состояния интерфейса.
         return render_search_page()
 
     @app.route("/ask", methods=["POST"])
     def ask():
+        # Один и тот же маршрут поддерживает и обычную HTML-форму, и JSON-запросы.
+        # Это позволяет использовать его и в веб-интерфейсе, и в будущем — в AJAX.
         is_json_request = request.is_json
         payload = request.get_json(silent=True) if is_json_request else None
         question = str((payload or {}).get("question", "")).strip() if payload else request.form.get("question", "").strip()
@@ -108,6 +134,8 @@ def create_app() -> Flask:
             pass
 
         if is_json_request:
+            # Для программного клиента возвращаем уже готовые данные ответа
+            # и HTML-представление markdown, чтобы фронтенд мог выбрать формат.
             return jsonify(
                 {
                     "question": result["query"],
@@ -128,6 +156,8 @@ def create_app() -> Flask:
 
     @app.route("/articles")
     def articles_page():
+        # Каталог статей — отдельная пользовательская точка входа в корпус знаний.
+        # Здесь можно просматривать материалы независимо от сценария /ask.
         page = get_page_by_endpoint("articles_page")
         documents = get_documents_list(limit=60)
         return render_template(
@@ -165,6 +195,8 @@ def create_app() -> Flask:
 
     @app.route("/feedback", methods=["GET", "POST"])
     def feedback_page():
+        # Форма обратной связи оставлена максимально простой, но уже пишет
+        # данные в SQL-слой, чтобы проект был готов к следующему этапу.
         page = get_page_by_endpoint("feedback_page")
         success_message = ""
         error_message = ""
@@ -196,6 +228,8 @@ def create_app() -> Flask:
 
     @app.route("/article/<doc_id>")
     def article_detail(doc_id: str):
+        # Пользовательская страница статьи строится поверх уже подготовленных
+        # метаданных корпуса и не показывает внутренние служебные поля.
         document = get_document_or_404(doc_id)
         return render_template(
             "article_detail.html",
@@ -210,6 +244,8 @@ def create_app() -> Flask:
 
     @app.route("/download/<doc_id>")
     def download_article(doc_id: str):
+        # Скачать markdown можно как исходный нормализованный файл,
+        # а если его нет на диске — как реконструированный текст статьи.
         document = get_document_or_404(doc_id)
         payload = article_download_payload(document)
         return Response(
@@ -231,6 +267,8 @@ app = create_app()
 
 
 if __name__ == "__main__":
+    # В локальном учебном сценарии приложение запускается встроенным сервером Flask.
+    # Настройки хоста и порта можно переопределить через переменные окружения.
     host = os.getenv("FLASK_RUN_HOST", "127.0.0.1")
     port = int(os.getenv("FLASK_RUN_PORT", "5000"))
     debug = os.getenv("FLASK_DEBUG", "").lower() in {"1", "true", "yes"}
