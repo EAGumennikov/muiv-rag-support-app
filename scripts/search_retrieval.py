@@ -10,12 +10,8 @@ import faiss
 from sentence_transformers import SentenceTransformer
 
 
-INDEX_PATH_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/indexes/astra_linux_wiki_faiss.index"
-)
-CHUNK_MAP_PATH_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/indexes/astra_linux_wiki_chunk_map.jsonl"
-)
+from common_paths import INDEX_PATH_DEFAULT, CHUNK_MAP_PATH_DEFAULT
+
 MODEL_NAME_DEFAULT = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 TOP_K_DEFAULT = 5
 

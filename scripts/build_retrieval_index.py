@@ -17,21 +17,19 @@ except Exception:
 from sentence_transformers import SentenceTransformer
 
 
-INPUT_JSONL_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/input/astra_linux_wiki_chunks.jsonl"
+from common_paths import (
+    INPUT_CHUNKS_DEFAULT,
+    EMBEDDINGS_PATH_DEFAULT,
+    INDEX_PATH_DEFAULT,
+    CHUNK_MAP_PATH_DEFAULT,
+    RETRIEVAL_STATS_DEFAULT,
 )
-OUTPUT_EMBEDDINGS_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/embeddings/astra_linux_wiki_embeddings.npy"
-)
-OUTPUT_INDEX_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/indexes/astra_linux_wiki_faiss.index"
-)
-OUTPUT_CHUNK_MAP_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/indexes/astra_linux_wiki_chunk_map.jsonl"
-)
-OUTPUT_STATS_DEFAULT = os.path.expanduser(
-    "~/Projects/MUIV_Diplom_local/output/retrieval_debug/astra_linux_wiki_index_stats.txt"
-)
+
+INPUT_JSONL_DEFAULT = INPUT_CHUNKS_DEFAULT
+OUTPUT_EMBEDDINGS_DEFAULT = EMBEDDINGS_PATH_DEFAULT
+OUTPUT_INDEX_DEFAULT = INDEX_PATH_DEFAULT
+OUTPUT_CHUNK_MAP_DEFAULT = CHUNK_MAP_PATH_DEFAULT
+OUTPUT_STATS_DEFAULT = RETRIEVAL_STATS_DEFAULT
 
 MODEL_NAME_DEFAULT = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 BATCH_SIZE_DEFAULT = 64
