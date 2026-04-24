@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from db.base import init_database, session_scope
-from db.models import Article, AuditLog
+from db.models import Article, AuditLog, FeedbackMessage
 
 
 def initialize_database() -> None:
@@ -54,3 +54,36 @@ def write_audit_log(*, event_type: str, entity_type: str = "", entity_id: str = 
                 payload_json=json.dumps(payload or {}, ensure_ascii=False),
             )
         )
+
+
+def save_feedback_message(*, name: str, email: str, topic: str, message: str, status: str = "new") -> dict[str, Any]:
+    initialize_database()
+
+    with session_scope() as session:
+        feedback = FeedbackMessage(
+            name=name.strip(),
+            email=email.strip(),
+            topic=topic.strip(),
+            message=message.strip(),
+            status=status,
+        )
+        session.add(feedback)
+        session.flush()
+
+        payload = {
+            "id": feedback.id,
+            "created_at": feedback.created_at.isoformat(),
+            "name": feedback.name,
+            "email": feedback.email,
+            "topic": feedback.topic,
+            "message": feedback.message,
+            "status": feedback.status,
+        }
+
+    write_audit_log(
+        event_type="feedback_saved",
+        entity_type="feedback_message",
+        entity_id=str(payload["id"]),
+        payload={"topic": payload["topic"], "email": payload["email"]},
+    )
+    return payload
