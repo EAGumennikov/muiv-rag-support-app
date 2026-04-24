@@ -339,6 +339,15 @@ img {
     font-weight: 700;
 }
 
+.source-label {
+    margin: 0 0 0.8rem;
+    color: var(--accent-dark);
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .source-actions,
 .action-row {
     flex-wrap: wrap;
@@ -348,6 +357,19 @@ img {
 .source-cards {
     display: grid;
     gap: 1rem;
+}
+
+.source-card h3 {
+    margin-bottom: 0.35rem;
+}
+
+.source-breadcrumbs {
+    margin-bottom: 0.85rem;
+}
+
+.source-excerpt {
+    margin-bottom: 0;
+    line-height: 1.6;
 }
 
 .stats-line {

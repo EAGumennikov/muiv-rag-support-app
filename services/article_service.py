@@ -20,7 +20,17 @@ WORKDIR_PATH = Path(CHUNK_MAP_PATH_DEFAULT).expanduser().resolve().parents[2]
 NORMALIZED_DIR_DEFAULT = WORKDIR_PATH / "output" / "normalized"
 NORMALIZED_INDEX_DEFAULT = WORKDIR_PATH / "output" / "normalized_index.csv"
 
-GENERIC_SECTIONS = {"", "раздел", "ответ", "секция", "вопрос", "окружение"}
+GENERIC_SECTIONS = {
+    "",
+    "раздел",
+    "ответ",
+    "секция",
+    "вопрос",
+    "окружение",
+    "без раздела",
+    "материал",
+    "подробности",
+}
 
 
 def _normalize_text(value: str) -> str:
@@ -41,9 +51,36 @@ def is_meaningful_section(section: str) -> bool:
     lowered = cleaned.lower()
     if lowered in GENERIC_SECTIONS:
         return False
+    if lowered.startswith("раздел ") or lowered.startswith("секция "):
+        return False
+    if lowered in {"overview", "general", "details"}:
+        return False
+    if "техническ" in lowered or "служебн" in lowered:
+        return False
     if len(cleaned) <= 2:
         return False
     return True
+
+
+def _build_source_excerpt(chunk_text: str, section: str) -> str:
+    text = (chunk_text or "").strip()
+    if not text:
+        return ""
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return ""
+
+    cleaned_section = _normalize_text(section).lstrip("#").strip().lower()
+    if lines:
+        first_line = _normalize_text(lines[0]).lstrip("#").strip().lower()
+        if cleaned_section and first_line == cleaned_section:
+            lines = lines[1:]
+
+    excerpt = _normalize_text(" ".join(lines))
+    if len(excerpt) > 220:
+        excerpt = excerpt[:217].rstrip() + "..."
+    return excerpt
 
 
 def _load_doc_index() -> Dict[str, Dict]:
@@ -176,10 +213,9 @@ def build_source_cards(results: List) -> List[Dict]:
                 "title": document.get("title", chunk.get("title", "").strip()),
                 "breadcrumbs": document.get("breadcrumbs", chunk.get("breadcrumbs", [])),
                 "section": section_label,
-                "excerpt": _normalize_text(chunk.get("chunk_text", ""))[:320],
+                "excerpt": _build_source_excerpt(chunk.get("chunk_text", ""), section),
                 "original_url": document.get("original_url", "").strip(),
                 "download_name": document.get("download_name", f"{doc_id}.md"),
-                "score": round(float(score), 4),
             }
         )
 

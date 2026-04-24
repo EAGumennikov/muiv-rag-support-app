@@ -48,13 +48,16 @@
         <div class="source-cards">
             {% for source in sources %}
             <article class="source-card">
+                <p class="source-label">Источник из базы знаний</p>
                 <div class="source-card-head">
                     <h3>{{ source.title }}</h3>
                     {% if source.section %}
                     <span class="source-badge">{{ source.section }}</span>
                     {% endif %}
                 </div>
+                {% if source.breadcrumbs %}
                 <p class="source-breadcrumbs">{{ source.breadcrumbs | join(" > ") }}</p>
+                {% endif %}
                 {% if source.excerpt %}
                 <p class="source-excerpt">{{ source.excerpt }}</p>
                 {% endif %}
