@@ -1,33 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import json
 import argparse
+import sys
+from pathlib import Path
 
-import numpy as np
-import faiss
-from sentence_transformers import SentenceTransformer
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPO_DIR = SCRIPT_DIR.parent
+if str(REPO_DIR) not in sys.path:
+    sys.path.insert(0, str(REPO_DIR))
 
-
-from common_paths import INDEX_PATH_DEFAULT, CHUNK_MAP_PATH_DEFAULT
-
-MODEL_NAME_DEFAULT = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-TOP_K_DEFAULT = 5
-
-
-def load_chunk_map(path):
-    rows = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rows.append(json.loads(line))
-            except Exception as e:
-                raise ValueError(f"Ошибка чтения chunk_map на строке {line_no}: {e}")
-    return rows
+from services.retrieval_service import (
+    CHUNK_MAP_PATH_DEFAULT,
+    INDEX_PATH_DEFAULT,
+    MODEL_NAME_DEFAULT,
+    TOP_K_DEFAULT,
+    semantic_search,
+)
 
 
 def format_result(rank, score, chunk):
@@ -60,38 +49,24 @@ def main():
     parser.add_argument("--model-name", default=MODEL_NAME_DEFAULT)
     args = parser.parse_args()
 
-    print("Загрузка chunk_map...")
-    chunks = load_chunk_map(args.chunk_map_path)
-    print(f"Загружено чанков: {len(chunks)}")
-
-    print("Загрузка FAISS-индекса...")
-    index = faiss.read_index(args.index_path)
-    print(f"Векторов в индексе: {index.ntotal}")
-
-    print(f"Загрузка модели эмбеддингов: {args.model_name}")
-    model = SentenceTransformer(args.model_name)
-
     query_text = args.query.strip()
     if not query_text:
         raise ValueError("Пустой запрос")
 
-    query_embedding = model.encode(
-        [query_text],
-        convert_to_numpy=True,
-        normalize_embeddings=True,
+    print("Поиск релевантных фрагментов...")
+    results = semantic_search(
+        query=query_text,
+        top_k=args.top_k,
+        index_path=args.index_path,
+        chunk_map_path=args.chunk_map_path,
+        model_name=args.model_name,
     )
-    query_embedding = np.asarray(query_embedding, dtype=np.float32)
-
-    scores, indices = index.search(query_embedding, args.top_k)
 
     print("\nРезультаты поиска\n")
     print(f"query: {query_text}")
     print("=" * 80)
 
-    for rank, (score, idx) in enumerate(zip(scores[0], indices[0]), start=1):
-        if idx < 0 or idx >= len(chunks):
-            continue
-        chunk = chunks[idx]
+    for rank, (score, chunk) in enumerate(results, start=1):
         print(format_result(rank, float(score), chunk))
 
 
