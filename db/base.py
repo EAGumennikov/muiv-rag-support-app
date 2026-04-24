@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+"""
+Базовые объекты SQLAlchemy для приложения.
+
+Здесь создаются Base, engine, фабрика сессий и контекстный менеджер session_scope.
+Этот модуль является центральной точкой входа в SQL-слой: модели наследуются
+от Base, а сервисы используют session_scope для безопасной работы с БД.
+"""
+
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -10,6 +18,7 @@ from db.config import ensure_database_parent_dir, get_database_url
 
 
 class Base(DeclarativeBase):
+    # От этого базового класса наследуются все ORM-модели проекта.
     pass
 
 
@@ -18,16 +27,22 @@ _SESSION_FACTORY = None
 
 
 def get_engine():
+    # Engine создается лениво, чтобы модуль можно было импортировать
+    # без немедленного подключения к базе на каждом старте Python-процесса.
     global _ENGINE
     if _ENGINE is None:
         database_url = get_database_url()
         ensure_database_parent_dir(database_url)
+        # Для SQLite отключаем проверку same-thread, потому что в учебном
+        # приложении один и тот же engine может использоваться разными частями Flask.
         connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
         _ENGINE = create_engine(database_url, future=True, connect_args=connect_args)
     return _ENGINE
 
 
 def get_session_factory():
+    # Единая фабрика сессий нужна, чтобы все сервисы работали
+    # с согласованными настройками SQLAlchemy.
     global _SESSION_FACTORY
     if _SESSION_FACTORY is None:
         _SESSION_FACTORY = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False, expire_on_commit=False)
@@ -36,6 +51,9 @@ def get_session_factory():
 
 @contextmanager
 def session_scope() -> Iterator[Session]:
+    # session_scope скрывает типовой шаблон работы с БД:
+    # открыть сессию -> выполнить операции -> закоммитить -> закрыть.
+    # При ошибке транзакция автоматически откатывается.
     session = get_session_factory()()
     try:
         yield session
@@ -48,6 +66,8 @@ def session_scope() -> Iterator[Session]:
 
 
 def init_database() -> None:
+    # Импорт моделей нужен до create_all, иначе SQLAlchemy не узнает
+    # о таблицах, которые должны быть созданы в базе.
     from db import models  # noqa: F401
 
     Base.metadata.create_all(bind=get_engine())

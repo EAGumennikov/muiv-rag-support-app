@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""
+ORM-модели SQL-слоя приложения.
+
+В файле собраны основные сущности учебного веб-ресурса: пользователи, роли,
+статьи базы знаний, сообщения обратной связи, история запросов и ответы RAG.
+Набор таблиц сделан с запасом для следующего этапа, чтобы расширять проект
+без смены архитектурной основы.
+"""
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
@@ -9,10 +18,14 @@ from db.base import Base
 
 
 def utcnow() -> datetime:
+    # Единая функция времени нужна, чтобы timestamp-поля всех моделей
+    # создавались согласованно и не дублировали одну и ту же логику.
     return datetime.utcnow()
 
 
 class Role(Base):
+    # Роль нужна как отдельная сущность, чтобы позже поддержать
+    # разграничение прав администратора, оператора и обычного пользователя.
     __tablename__ = "roles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -23,6 +36,8 @@ class Role(Base):
 
 
 class User(Base):
+    # Пользовательская таблица пока не задействована в аутентификации,
+    # но уже готовит основу для следующего этапа проекта.
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -35,6 +50,8 @@ class User(Base):
 
 
 class UserRole(Base):
+    # Связь многие-ко-многим между пользователями и ролями.
+    # Отдельная таблица позволяет назначать одному пользователю несколько ролей.
     __tablename__ = "user_roles"
     __table_args__ = (UniqueConstraint("user_id", "role_id", name="uq_user_roles_user_role"),)
 
@@ -45,6 +62,8 @@ class UserRole(Base):
 
 
 class Article(Base):
+    # Таблица статей хранит метаданные документов базы знаний в SQL-слое.
+    # Она не заменяет исходный корпус, а добавляет управляемый прикладной слой.
     __tablename__ = "articles"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -63,6 +82,8 @@ class Article(Base):
 
 
 class ArticleFile(Base):
+    # Отдельная таблица файлов позволяет в будущем хранить несколько
+    # представлений одной статьи: markdown, оригинал, экспорт и т.д.
     __tablename__ = "article_files"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -76,6 +97,8 @@ class ArticleFile(Base):
 
 
 class GlossaryTerm(Base):
+    # Глоссарий выделен в отдельную таблицу, чтобы термины можно было
+    # наполнять и редактировать независимо от шаблонов страниц.
     __tablename__ = "glossary_terms"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -86,6 +109,7 @@ class GlossaryTerm(Base):
 
 
 class OnboardingPage(Base):
+    # Таблица для будущего хранения шагов онбординга уже в БД, а не только в коде.
     __tablename__ = "onboarding_pages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -98,6 +122,8 @@ class OnboardingPage(Base):
 
 
 class FaqItem(Base):
+    # FAQ тоже вынесен в отдельную сущность, чтобы позже управлять
+    # списком вопросов через административный интерфейс.
     __tablename__ = "faq_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -109,6 +135,8 @@ class FaqItem(Base):
 
 
 class FeedbackMessage(Base):
+    # Сообщения формы обратной связи — первая реальная пользовательская сущность,
+    # которую проект уже сохраняет в SQL-базу.
     __tablename__ = "feedback_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -121,6 +149,8 @@ class FeedbackMessage(Base):
 
 
 class SearchQuery(Base):
+    # Таблица хранит сам факт обращения к RAG-поиску:
+    # исходный вопрос, базовые debug-метрики retrieval и время запроса.
     __tablename__ = "search_queries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -135,6 +165,8 @@ class SearchQuery(Base):
 
 
 class RagAnswer(Base):
+    # Ответ RAG отделен от вопроса в отдельную таблицу,
+    # чтобы было удобнее расширять хранение истории и аналитики.
     __tablename__ = "rag_answers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -149,6 +181,8 @@ class RagAnswer(Base):
 
 
 class RagAnswerSource(Base):
+    # Эта таблица фиксирует, на каких источниках основан конкретный ответ.
+    # Она особенно полезна для аудита и последующего анализа качества retrieval.
     __tablename__ = "rag_answer_sources"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -165,6 +199,8 @@ class RagAnswerSource(Base):
 
 
 class AuditLog(Base):
+    # Упрощенный аудит фиксирует ключевые действия приложения,
+    # например сохранение feedback или истории поиска.
     __tablename__ = "audit_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -176,6 +212,8 @@ class AuditLog(Base):
 
 
 class Setting(Base):
+    # Таблица настроек нужна как задел на следующий этап,
+    # когда часть параметров можно будет перенести из кода в БД.
     __tablename__ = "settings"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

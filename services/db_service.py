@@ -1,5 +1,14 @@
 from __future__ import annotations
 
+"""
+Сервисный слой работы с SQL-базой приложения.
+
+Модуль скрывает от остального кода детали ORM-операций: создание таблиц,
+сохранение feedback, запись истории запросов и поддержку базовых справочников.
+За счет этого Flask-маршруты и другие сервисы работают с понятными функциями,
+а не с низкоуровневыми SQLAlchemy-вызовами.
+"""
+
 import json
 from typing import Any
 
@@ -8,10 +17,13 @@ from db.models import Article, AuditLog, FeedbackMessage, RagAnswer, RagAnswerSo
 
 
 def initialize_database() -> None:
+    # Явная функция инициализации нужна и для Flask-приложения, и для CLI-скрипта.
     init_database()
 
 
 def upsert_article_reference(*, doc_id: str, title: str, breadcrumbs: list[str], normalized_file: str = "", source_file: str = "", original_url: str = "") -> int | None:
+    # При сохранении истории ответов важно не плодить дубликаты статей.
+    # Поэтому метаданные статьи добавляются по схеме upsert.
     if not doc_id:
         return None
 
@@ -30,6 +42,8 @@ def upsert_article_reference(*, doc_id: str, title: str, breadcrumbs: list[str],
 
 
 def write_audit_log(*, event_type: str, entity_type: str = "", entity_id: str = "", payload: dict[str, Any] | None = None) -> None:
+    # Аудит пока реализован минимально, но уже позволяет видеть,
+    # какие пользовательские действия были зафиксированы в системе.
     with session_scope() as session:
         session.add(
             AuditLog(
@@ -42,6 +56,8 @@ def write_audit_log(*, event_type: str, entity_type: str = "", entity_id: str = 
 
 
 def save_feedback_message(*, name: str, email: str, topic: str, message: str, status: str = "new") -> dict[str, Any]:
+    # Обратная связь сохраняется в прикладную таблицу и сразу возвращается
+    # в виде словаря, чтобы маршрут мог при необходимости работать без ORM-объекта.
     initialize_database()
 
     with session_scope() as session:
@@ -75,6 +91,8 @@ def save_feedback_message(*, name: str, email: str, topic: str, message: str, st
 
 
 def save_search_interaction(*, question: str, result: dict[str, Any], channel: str = "web") -> dict[str, Any]:
+    # Функция сохраняет весь след одного обращения к RAG:
+    # вопрос, ответ, debug-метрики и список использованных источников.
     initialize_database()
 
     with session_scope() as session:
@@ -99,6 +117,8 @@ def save_search_interaction(*, question: str, result: dict[str, Any], channel: s
 
         sources = result.get("sources", []) or []
         for index, source in enumerate(sources, start=1):
+            # Для каждого источника пытаемся связать ответ с уже известной статьей,
+            # чтобы история запросов была связана с каталогом документов.
             article = _upsert_article_reference_in_session(
                 session=session,
                 doc_id=(source.get("doc_id") or "").strip(),
@@ -136,6 +156,8 @@ def save_search_interaction(*, question: str, result: dict[str, Any], channel: s
 
 
 def _upsert_article_reference_in_session(*, session, doc_id: str, title: str, breadcrumbs: list[str], normalized_file: str = "", source_file: str = "", original_url: str = "") -> Article | None:
+    # Внутренняя версия upsert используется внутри уже открытой транзакции,
+    # чтобы не плодить вложенные session_scope при сохранении истории ответа.
     if not doc_id:
         return None
 
