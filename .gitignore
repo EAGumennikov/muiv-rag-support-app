@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS
+.DS_Store
+
+# Environments and secrets
+.env
+.env.*
+env/
+venv/
+.venv/
+
+# Local runtime data
+input/
+output/
+logs/
+
+# Large generated artifacts
+*.npy
+*.index
+*.jsonl
+*.csv
+
+# IDE
+.vscode/
+.idea/
