@@ -145,17 +145,36 @@ a {
     padding: 0.85rem 1.4rem;
     border: none;
     border-radius: 999px;
-    background: #c7baa4;
+    background: var(--accent);
     color: #fff;
     font: inherit;
     font-weight: 700;
-    cursor: not-allowed;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.question-form button:hover,
+.question-form button:focus-visible {
+    background: var(--accent-dark);
+    transform: translateY(-1px);
 }
 
 .form-note {
     margin: 0;
     color: var(--muted);
     font-size: 0.95rem;
+}
+
+.status-message {
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+}
+
+.status-error {
+    background: #fce6e2;
+    color: #7b2d20;
+    border: 1px solid #efc0b8;
 }
 
 .results-grid {
@@ -168,9 +187,33 @@ a {
     color: var(--text);
 }
 
+.placeholder-text {
+    color: var(--muted);
+}
+
 .sources-list {
     margin: 0;
     padding-left: 1.25rem;
+}
+
+.debug-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.debug-item {
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+}
+
+.debug-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+    font-size: 0.95rem;
 }
 
 .site-footer {
@@ -181,7 +224,8 @@ a {
 @media (max-width: 800px) {
     .header-inner,
     .hero,
-    .results-grid {
+    .results-grid,
+    .debug-grid {
         grid-template-columns: 1fr;
         display: grid;
     }

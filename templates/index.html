@@ -22,16 +22,22 @@
 
 <section class="panel">
     <h2>Задать вопрос</h2>
-    <form class="question-form">
+    <form class="question-form" action="{{ url_for('ask') }}" method="post">
         <label for="question">Введите вопрос пользователя</label>
         <textarea
             id="question"
             name="question"
             rows="5"
             placeholder="Например: почему не открывается личный кабинет и что можно проверить?"
-        ></textarea>
-        <button type="submit" disabled>Отправить</button>
-        <p class="form-note">На первом этапе кнопка не активна: ответ отображается как демонстрационная заглушка.</p>
+        >{{ question }}</textarea>
+        <button type="submit">Отправить</button>
+        <p class="form-note">
+            Запрос отправляется в реальный RAG-контур: выполняется retrieval по индексированному корпусу
+            и формируется ответ через внешний LLM-провайдер.
+        </p>
+        {% if error_message %}
+        <div class="status-message status-error">{{ error_message }}</div>
+        {% endif %}
     </form>
 </section>
 
@@ -39,19 +45,43 @@
     <article class="panel">
         <h2>Ответ системы</h2>
         <div class="result-block">
+            {% if answer_text %}
             <p>{{ answer_text }}</p>
+            {% else %}
+            <p class="placeholder-text">После отправки вопроса здесь появится итоговый ответ системы.</p>
+            {% endif %}
         </div>
     </article>
 
     <article class="panel">
         <h2>Источники</h2>
         <div class="result-block">
+            {% if sources %}
             <ul class="sources-list">
                 {% for source in sources %}
                 <li>{{ source }}</li>
                 {% endfor %}
             </ul>
+            {% else %}
+            <p class="placeholder-text">После выполнения retrieval здесь будет показан список использованных источников.</p>
+            {% endif %}
         </div>
     </article>
 </section>
+
+{% if debug %}
+<section class="panel">
+    <h2>Служебные данные</h2>
+    <div class="debug-grid">
+        <div class="debug-item">
+            <span class="debug-label">Найдено фрагментов</span>
+            <strong>{{ debug.retrieved_chunks }}</strong>
+        </div>
+        <div class="debug-item">
+            <span class="debug-label">Использовано в контексте</span>
+            <strong>{{ debug.used_chunks }}</strong>
+        </div>
+    </div>
+</section>
+{% endif %}
 {% endblock %}
