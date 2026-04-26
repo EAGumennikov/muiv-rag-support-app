@@ -38,8 +38,9 @@ class Role(Base):
 
 
 class User(Base):
-    # Пользовательская таблица пока не задействована в аутентификации,
-    # но уже готовит основу для следующего этапа проекта.
+    # Пользователь связан с историей запросов и обратной связью,
+    # чтобы закрытый контур показывал персональные данные сотрудника,
+    # а администратор мог анализировать общую картину по системе.
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -51,6 +52,8 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
     user_roles: Mapped[list["UserRole"]] = relationship(back_populates="user")
+    feedback_messages: Mapped[list["FeedbackMessage"]] = relationship(back_populates="user")
+    search_queries: Mapped[list["SearchQuery"]] = relationship(back_populates="user")
 
 
 class UserRole(Base):
@@ -143,10 +146,12 @@ class FaqItem(Base):
 
 class FeedbackMessage(Base):
     # Сообщения формы обратной связи — первая реальная пользовательская сущность,
-    # которую проект уже сохраняет в SQL-базу.
+    # которую проект уже сохраняет в SQL-базу. user_id остается nullable:
+    # публичная форма должна работать и для неавторизованных посетителей.
     __tablename__ = "feedback_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     topic: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -154,13 +159,17 @@ class FeedbackMessage(Base):
     status: Mapped[str] = mapped_column(String(50), default="new", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
+    user: Mapped[User | None] = relationship(back_populates="feedback_messages")
+
 
 class SearchQuery(Base):
     # Таблица хранит сам факт обращения к RAG-поиску:
     # исходный вопрос, базовые debug-метрики retrieval и время запроса.
+    # Nullable user_id позволяет сохранить совместимость с публичным поиском.
     __tablename__ = "search_queries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     question_text: Mapped[str] = mapped_column(Text, nullable=False)
     channel: Mapped[str] = mapped_column(String(50), default="web", nullable=False)
     retrieved_chunks_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -168,6 +177,7 @@ class SearchQuery(Base):
     debug_json: Mapped[str] = mapped_column(Text, default="{}", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
 
+    user: Mapped[User | None] = relationship(back_populates="search_queries")
     rag_answer: Mapped["RagAnswer"] = relationship(back_populates="search_query", uselist=False)
 
 

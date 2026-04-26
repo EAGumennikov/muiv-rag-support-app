@@ -44,14 +44,18 @@ from services.auth_service import (
 from services.db_service import (
     get_admin_dashboard_stats,
     get_content_statistics,
+    get_feedback_message,
+    get_user_dashboard_stats,
     initialize_database,
     list_feedback_messages,
+    list_recent_answer_sources,
     list_recent_audit_logs,
     list_recent_rag_answers,
     list_recent_search_queries,
     list_roles_summary,
     list_users_with_roles,
     save_search_interaction,
+    update_feedback_status,
 )
 from services.feedback_service import save_feedback
 from services.markdown_service import render_markdown
@@ -115,6 +119,7 @@ def render_secure_section(
     records: list[dict] | None = None,
     records_title: str = "",
     empty_message: str = "",
+    quick_links: list[dict] | None = None,
 ):
     # Общий шаблон нужен, чтобы кабинет, редакторский контур и админ-панель
     # выглядели согласованно, но не дублировали одинаковую верстку в app.py.
@@ -129,6 +134,7 @@ def render_secure_section(
         records=records or [],
         records_title=records_title,
         empty_message=empty_message,
+        quick_links=quick_links or [],
         breadcrumbs=build_breadcrumbs((section_label, section_navigation[0]["route"]), (page["title"], None)),
     )
 
@@ -230,6 +236,12 @@ def create_app() -> Flask:
                 {"label": "Пользователь", "value": user.display_name, "note": user.username},
                 {"label": "Роль", "value": user_primary_role_label(user), "note": ", ".join(user.roles)},
                 {"label": "Статус", "value": "Активен" if user.is_active else "Неактивен", "note": user.email},
+            ]
+            + get_user_dashboard_stats(user.id),
+            quick_links=[
+                {"label": "Задать вопрос", "url": url_for("search_page"), "note": "Поиск по базе знаний"},
+                {"label": "Открыть статьи", "url": url_for("articles_page"), "note": "Каталог источников"},
+                {"label": "Сообщить замечание", "url": url_for("feedback_page"), "note": "Форма обратной связи"},
             ],
         )
 
@@ -253,6 +265,7 @@ def create_app() -> Flask:
     @app.route("/cabinet/history")
     @login_required
     def cabinet_history():
+        user = current_user_from_context()
         page = get_secure_page_by_endpoint("cabinet_history", get_cabinet_pages())
         records = [
             {
@@ -261,7 +274,7 @@ def create_app() -> Flask:
                 "Использовано": row["used_chunks_count"],
                 "Время": row["created_at"],
             }
-            for row in list_recent_search_queries(limit=10)
+            for row in list_recent_search_queries(limit=10, user_id=user.id)
         ]
         return render_secure_section(
             page=page,
@@ -269,20 +282,22 @@ def create_app() -> Flask:
             navigation_title="Разделы кабинета",
             section_navigation=get_cabinet_pages(),
             records=records,
-            records_title="Последние запросы",
-            empty_message="История запросов пока не накоплена.",
+            records_title="Мои последние вопросы",
+            empty_message="У текущего пользователя пока нет сохраненных вопросов.",
         )
 
     @app.route("/cabinet/saved-answers")
     @login_required
     def cabinet_saved_answers():
+        user = current_user_from_context()
         page = get_secure_page_by_endpoint("cabinet_saved_answers", get_cabinet_pages())
         records = [
             {
+                "Вопрос": row["question_text"],
                 "Ответ": row["answer_text"],
                 "Создан": row["created_at"],
             }
-            for row in list_recent_rag_answers(limit=10)
+            for row in list_recent_rag_answers(limit=10, user_id=user.id)
         ]
         return render_secure_section(
             page=page,
@@ -290,8 +305,34 @@ def create_app() -> Flask:
             navigation_title="Разделы кабинета",
             section_navigation=get_cabinet_pages(),
             records=records,
-            records_title="Последние ответы системы",
-            empty_message="Сохраненные ответы пока отсутствуют.",
+            records_title="Мои последние ответы",
+            empty_message="Для текущего пользователя пока нет сохраненных RAG-ответов.",
+        )
+
+    @app.route("/cabinet/feedback")
+    @login_required
+    def cabinet_feedback():
+        # Личный кабинет показывает только обращения текущего пользователя.
+        # Администраторский маршрут ниже использует тот же SQL-слой без фильтра.
+        user = current_user_from_context()
+        page = get_secure_page_by_endpoint("cabinet_feedback", get_cabinet_pages())
+        records = [
+            {
+                "Тема": row["topic"],
+                "Статус": row["status"],
+                "Сообщение": row["message"],
+                "Время": row["created_at"],
+            }
+            for row in list_feedback_messages(limit=10, user_id=user.id)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Личный кабинет",
+            navigation_title="Разделы кабинета",
+            section_navigation=get_cabinet_pages(),
+            records=records,
+            records_title="Мои обращения",
+            empty_message="У текущего пользователя пока нет обращений обратной связи.",
         )
 
     @app.route("/cabinet/help")
@@ -303,6 +344,30 @@ def create_app() -> Flask:
             section_label="Личный кабинет",
             navigation_title="Разделы кабинета",
             section_navigation=get_cabinet_pages(),
+            quick_links=[
+                {"label": "Поиск по базе знаний", "url": url_for("search_page"), "note": "Основной рабочий сценарий"},
+                {"label": "Статьи базы знаний", "url": url_for("articles_page"), "note": "Просмотр источников"},
+                {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Ключевые термины"},
+                {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
+                {"label": "Обратная связь", "url": url_for("feedback_page"), "note": "Фиксация замечаний"},
+            ],
+        )
+
+    @app.route("/editor")
+    @roles_required(ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+    def editor_home():
+        page = get_secure_page_by_endpoint("editor_home", get_editor_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Контур редактора",
+            navigation_title="Рабочие разделы редактора",
+            section_navigation=get_editor_pages(),
+            info_cards=get_content_statistics(),
+            quick_links=[
+                {"label": "Каталог статей", "url": url_for("articles_page"), "note": "Публичный корпус"},
+                {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Термины проекта"},
+                {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
+            ],
         )
 
     @app.route("/editor/content")
@@ -315,18 +380,100 @@ def create_app() -> Flask:
             navigation_title="Рабочие разделы редактора",
             section_navigation=get_editor_pages(),
             info_cards=get_content_statistics(),
+            quick_links=[
+                {"label": "Открыть каталог статей", "url": url_for("articles_page"), "note": "Проверка публичного отображения"},
+                {"label": "Открыть глоссарий", "url": url_for("glossary_page"), "note": "Справочный раздел"},
+                {"label": "Открыть FAQ", "url": url_for("faq_page"), "note": "Публичные ответы"},
+            ],
+        )
+
+    @app.route("/editor/sources")
+    @roles_required(ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+    def editor_sources():
+        page = get_secure_page_by_endpoint("editor_sources", get_editor_pages())
+        records = [
+            {
+                "Документ": row["title"],
+                "Раздел": row["section_label"] or "Не указан",
+                "doc_id": row["doc_id"],
+                "Оригинал": row["original_url"] or "Не указан",
+            }
+            for row in list_recent_answer_sources(limit=20)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Контур редактора",
+            navigation_title="Рабочие разделы редактора",
+            section_navigation=get_editor_pages(),
+            records=records,
+            records_title="Последние источники RAG",
+            empty_message="Источники появятся после сохранения ответов RAG.",
+        )
+
+    @app.route("/editor/feedback")
+    @roles_required(ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+    def editor_feedback():
+        page = get_secure_page_by_endpoint("editor_feedback", get_editor_pages())
+        records = [
+            {
+                "Тема": row["topic"],
+                "Пользователь": row["username"] or row["email"],
+                "Статус": row["status"],
+                "Сообщение": row["message"],
+                "Время": row["created_at"],
+            }
+            for row in list_feedback_messages(limit=20)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Контур редактора",
+            navigation_title="Рабочие разделы редактора",
+            section_navigation=get_editor_pages(),
+            records=records,
+            records_title="Обращения по качеству знаний",
+            empty_message="Обращения обратной связи пока отсутствуют.",
+        )
+
+    @app.route("/editor/links")
+    @roles_required(ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+    def editor_links():
+        page = get_secure_page_by_endpoint("editor_links", get_editor_pages())
+        return render_secure_section(
+            page=page,
+            section_label="Контур редактора",
+            navigation_title="Рабочие разделы редактора",
+            section_navigation=get_editor_pages(),
+            quick_links=[
+                {"label": "Статьи", "url": url_for("articles_page"), "note": "Каталог материалов"},
+                {"label": "Поиск", "url": url_for("search_page"), "note": "Проверка RAG-сценария"},
+                {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Справочные термины"},
+                {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
+                {"label": "Тестирование", "url": url_for("testing_page"), "note": "Подходы к проверке"},
+            ],
         )
 
     @app.route("/admin")
     @roles_required(ROLE_ADMIN)
     def admin_home():
         page = get_secure_page_by_endpoint("admin_home", get_admin_pages())
+        records = [
+            {
+                "Событие": row["event_type"],
+                "Сущность": row["entity_type"] or "—",
+                "ID": row["entity_id"] or "—",
+                "Время": row["created_at"],
+            }
+            for row in list_recent_audit_logs(limit=5)
+        ]
         return render_secure_section(
             page=page,
             section_label="Панель администратора",
             navigation_title="Разделы админ-панели",
             section_navigation=get_admin_pages(),
             info_cards=get_admin_dashboard_stats(),
+            records=records,
+            records_title="Последние события аудита",
+            empty_message="События аудита пока отсутствуют.",
         )
 
     @app.route("/admin/users")
@@ -382,11 +529,14 @@ def create_app() -> Flask:
         page = get_secure_page_by_endpoint("admin_feedback", get_admin_pages())
         records = [
             {
+                "ID": row["id"],
                 "Имя": row["name"],
                 "Email": row["email"],
+                "Пользователь": row["username"] or "Не авторизован",
                 "Тема": row["topic"],
                 "Статус": row["status"],
                 "Время": row["created_at"],
+                "Детали": url_for("admin_feedback_detail", feedback_id=row["id"]),
             }
             for row in list_feedback_messages(limit=20)
         ]
@@ -398,6 +548,69 @@ def create_app() -> Flask:
             records=records,
             records_title="Сообщения обратной связи",
             empty_message="Сообщения обратной связи пока отсутствуют.",
+        )
+
+    @app.route("/admin/feedback/<int:feedback_id>", methods=["GET", "POST"])
+    @roles_required(ROLE_ADMIN)
+    def admin_feedback_detail(feedback_id: int):
+        # Детальная страница feedback доступна только администратору:
+        # здесь можно видеть полный текст обращения и изменить статус обработки.
+        user = current_user_from_context()
+        if request.method == "POST":
+            update_feedback_status(
+                feedback_id=feedback_id,
+                status=request.form.get("status", ""),
+                admin_user_id=user.id,
+            )
+            return redirect(url_for("admin_feedback_detail", feedback_id=feedback_id))
+
+        feedback = get_feedback_message(feedback_id)
+        if feedback is None:
+            return redirect(url_for("admin_feedback"))
+
+        page = get_secure_page_by_endpoint("admin_feedback", get_admin_pages())
+        return render_template(
+            "admin_feedback_detail.html",
+            page_title=f"Feedback #{feedback_id}",
+            page=page,
+            feedback=feedback,
+            status_options=[
+                ("new", "Новое"),
+                ("in_progress", "В работе"),
+                ("resolved", "Решено"),
+                ("rejected", "Отклонено"),
+            ],
+            breadcrumbs=build_breadcrumbs(
+                ("Панель администратора", url_for("admin_home")),
+                ("Обратная связь", url_for("admin_feedback")),
+                (f"Обращение #{feedback_id}", None),
+            ),
+        )
+
+    @app.route("/admin/history")
+    @roles_required(ROLE_ADMIN)
+    def admin_history():
+        # Администратор видит общую историю, включая анонимные публичные запросы.
+        # В личном кабинете аналогичная выборка фильтруется по текущему user_id.
+        page = get_secure_page_by_endpoint("admin_history", get_admin_pages())
+        records = [
+            {
+                "Вопрос": row["question_text"],
+                "Пользователь": row["username"] or "Не авторизован",
+                "Найдено фрагментов": row["retrieved_chunks_count"],
+                "Использовано": row["used_chunks_count"],
+                "Время": row["created_at"],
+            }
+            for row in list_recent_search_queries(limit=30)
+        ]
+        return render_secure_section(
+            page=page,
+            section_label="Панель администратора",
+            navigation_title="Разделы админ-панели",
+            section_navigation=get_admin_pages(),
+            records=records,
+            records_title="Общая история запросов",
+            empty_message="История запросов пока не накоплена.",
         )
 
     @app.route("/admin/content")
@@ -458,7 +671,13 @@ def create_app() -> Flask:
             return render_search_page(question=question, error_message=error_message), 500
 
         try:
-            save_search_interaction(question=question, result=result, channel="web")
+            current_user = current_user_from_context()
+            save_search_interaction(
+                question=question,
+                result=result,
+                channel="web",
+                user_id=current_user.id if current_user else None,
+            )
         except Exception:
             # Ошибки сохранения истории не должны ломать основной пользовательский сценарий.
             pass
@@ -542,7 +761,8 @@ def create_app() -> Flask:
             if not all(form_data.values()):
                 error_message = "Заполните все поля формы обратной связи."
             else:
-                save_feedback(**form_data)
+                current_user = current_user_from_context()
+                save_feedback(**form_data, user_id=current_user.id if current_user else None)
                 success_message = "Сообщение успешно отправлено. Спасибо за обратную связь."
                 form_data = {"name": "", "email": "", "topic": "", "message": ""}
 

@@ -13,12 +13,13 @@ from typing import Dict
 from services.db_service import save_feedback_message
 
 
-def save_feedback(*, name: str, email: str, topic: str, message: str) -> Dict:
-    # Интерфейс функции сохранен прежним, чтобы форма /feedback продолжала
-    # работать без изменений во Flask-маршруте и шаблонах.
+def save_feedback(*, name: str, email: str, topic: str, message: str, user_id: int | None = None) -> Dict:
+    # user_id передается только для авторизованных пользователей.
+    # Публичная форма сохраняет прежнее поведение и оставляет связь пустой.
     return save_feedback_message(
         name=name,
         email=email,
         topic=topic,
         message=message,
+        user_id=user_id,
     )

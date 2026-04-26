@@ -39,6 +39,22 @@
         </div>
         {% endif %}
 
+        {% if quick_links %}
+        <div class="panel panel-nested">
+            <h2>Быстрые действия</h2>
+            <div class="quick-link-grid">
+                {% for link in quick_links %}
+                <a class="quick-link-card" href="{{ link.url }}">
+                    <strong>{{ link.label }}</strong>
+                    {% if link.note %}
+                    <span>{{ link.note }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if records %}
         <div class="panel panel-nested">
             <h2>{{ records_title }}</h2>
@@ -46,7 +62,14 @@
                 {% for row in records %}
                 <article class="record-item">
                     {% for key, value in row.items() %}
-                    <p><strong>{{ key }}:</strong> {{ value if value is string or value is number else value | join(", ") }}</p>
+                    <p>
+                        <strong>{{ key }}:</strong>
+                        {% if value is string and (value.startswith("/") or value.startswith("http")) %}
+                        <a class="text-link" href="{{ value }}">Открыть</a>
+                        {% else %}
+                        {{ value if value is string or value is number else value | join(", ") }}
+                        {% endif %}
+                    </p>
                     {% endfor %}
                 </article>
                 {% endfor %}

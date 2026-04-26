@@ -261,7 +261,8 @@ img {
 }
 
 .question-form textarea,
-.question-form input {
+.question-form input,
+.question-form select {
     width: 100%;
     padding: 0.95rem 1rem;
     border: 1px solid var(--border);
@@ -523,6 +524,30 @@ img {
     gap: 0.9rem;
 }
 
+.quick-link-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.quick-link-card {
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid var(--border);
+}
+
+.quick-link-card strong {
+    color: var(--accent-dark);
+}
+
+.quick-link-card span {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
 .record-item {
     padding: 1rem;
     border-radius: 16px;
@@ -713,7 +738,8 @@ img {
     .card-grid,
     .article-layout,
     .secure-layout,
-    .secure-card-grid {
+    .secure-card-grid,
+    .quick-link-grid {
         grid-template-columns: 1fr;
     }
 }

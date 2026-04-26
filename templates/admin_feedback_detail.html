@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="secure-layout">
+    <aside class="panel secure-sidebar">
+        <span class="eyebrow">Панель администратора</span>
+        <h2>Разделы админ-панели</h2>
+        <nav class="secure-nav" aria-label="Разделы админ-панели">
+            {% for item in admin_navigation %}
+            <a class="{% if request.endpoint == item.endpoint %}is-active{% endif %}" href="{{ item.route }}">
+                {{ item.title }}
+            </a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <section class="panel secure-main">
+        <span class="eyebrow">Обратная связь</span>
+        <h1>Обращение #{{ feedback.id }}</h1>
+        <p class="lead-text">Детальная карточка обращения используется администратором для просмотра сообщения и изменения статуса обработки.</p>
+
+        <div class="secure-card-grid">
+            <article class="info-card">
+                <span class="article-meta-label">Отправитель</span>
+                <strong>{{ feedback.name }}</strong>
+                <p class="muted-text">{{ feedback.email }}</p>
+            </article>
+            <article class="info-card">
+                <span class="article-meta-label">Пользователь</span>
+                <strong>{{ feedback.username or "Не авторизован" }}</strong>
+                <p class="muted-text">Связь с учетной записью хранится в SQL при входе пользователя.</p>
+            </article>
+            <article class="info-card">
+                <span class="article-meta-label">Статус</span>
+                <strong>{{ feedback.status }}</strong>
+                <p class="muted-text">{{ feedback.created_at }}</p>
+            </article>
+        </div>
+
+        <div class="panel panel-nested">
+            <h2>{{ feedback.topic }}</h2>
+            <p>{{ feedback.message }}</p>
+        </div>
+
+        <form class="question-form status-form" action="{{ url_for('admin_feedback_detail', feedback_id=feedback.id) }}" method="post">
+            <label for="status">Изменить статус обращения</label>
+            <select id="status" name="status">
+                {% for value, label in status_options %}
+                <option value="{{ value }}" {% if feedback.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Сохранить статус</button>
+        </form>
+    </section>
+</section>
+{% endblock %}
