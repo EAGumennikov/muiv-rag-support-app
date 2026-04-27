@@ -3,14 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ page_title }} | MUIV RAG Support App</title>
+    <title>{{ page_title }} | Система управления знаниями поддержки</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
     <header class="site-header">
         <div class="container header-inner">
             <div class="brand-block">
-                <a class="brand" href="{{ url_for('index') }}">MUIV RAG Support App</a>
+                <a class="brand" href="{{ url_for('index') }}" aria-label="Система управления знаниями поддержки">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" focusable="false">
+                            <circle cx="24" cy="24" r="3.8"></circle>
+                            <ellipse cx="24" cy="24" rx="18" ry="7.2"></ellipse>
+                            <ellipse cx="24" cy="24" rx="18" ry="7.2" transform="rotate(60 24 24)"></ellipse>
+                            <ellipse cx="24" cy="24" rx="18" ry="7.2" transform="rotate(120 24 24)"></ellipse>
+                        </svg>
+                    </span>
+                    <span class="brand-text">
+                        <strong>Система управления знаниями поддержки</strong>
+                        <small>RAG-поиск, база знаний и адаптация сотрудников</small>
+                    </span>
+                </a>
                 {% if current_user %}
                 <div class="user-badge">
                     <strong>{{ current_user.display_name }}</strong>
@@ -89,8 +102,8 @@
     <footer class="site-footer">
         <div class="container footer-inner">
             <div>
-                <p>Учебный прототип системы управления знаниями службы поддержки пользователей.</p>
-                <p class="footer-author">Автор: Гуменников Евгений Андреевич</p>
+                <p>Учебный web-сервис управления знаниями службы поддержки пользователей.</p>
+                <p class="footer-author">Гуменников Евгений Андреевич, МУИВ, преддипломная практика и подготовка ВКР.</p>
             </div>
             <div class="footer-links">
                 <a href="{{ url_for('feedback_page') }}">Обратная связь</a>

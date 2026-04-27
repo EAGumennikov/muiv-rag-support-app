@@ -58,21 +58,33 @@
         {% if records %}
         <div class="panel panel-nested">
             <h2>{{ records_title }}</h2>
-            <div class="records-list">
+            <div class="records-table-wrap">
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            {% for key in records[0].keys() %}
+                            <th>{{ key }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
                 {% for row in records %}
-                <article class="record-item">
+                        <tr>
                     {% for key, value in row.items() %}
-                    <p>
-                        <strong>{{ key }}:</strong>
+                            <td data-label="{{ key }}">
                         {% if value is string and (value.startswith("/") or value.startswith("http")) %}
                         <a class="text-link" href="{{ value }}">Открыть</a>
+                        {% elif key|lower == "статус" %}
+                        <span class="status-badge status-{{ value }}">{{ value }}</span>
                         {% else %}
                         {{ value if value is string or value is number else value | join(", ") }}
                         {% endif %}
-                    </p>
+                            </td>
                     {% endfor %}
-                </article>
+                        </tr>
                 {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
         {% elif records_title %}

@@ -32,7 +32,7 @@
             </article>
             <article class="info-card">
                 <span class="article-meta-label">Статус</span>
-                <strong>{{ feedback.status }}</strong>
+                <strong><span class="status-badge status-{{ feedback.status }}">{{ feedback.status }}</span></strong>
                 <p class="muted-text">{{ feedback.created_at }}</p>
             </article>
         </div>
