@@ -41,6 +41,15 @@ GENERIC_SECTIONS = {
     "подробности",
 }
 
+FEATURED_DOC_IDS = [
+    "339495505",
+    "263032388",
+    "238762948",
+    "371817387",
+    "294401372",
+    "348174066",
+]
+
 
 def _normalize_text(value: str) -> str:
     # Для сравнения и отображения метаданных удобнее заранее убрать
@@ -55,6 +64,16 @@ def _public_doc_allowed(doc_id: str, title: str) -> bool:
         return False
     clean_title = _normalize_text(title)
     return bool(clean_title and not clean_title.startswith("._"))
+
+
+def _display_title(title: str) -> str:
+    # В корпусе часть заголовков содержит служебный префикс пространства.
+    # Для карточек сайта показываем более короткое пользовательское название.
+    title = _normalize_text(title)
+    for prefix in ("База знаний : ", "База знаний: "):
+        if title.startswith(prefix):
+            return title[len(prefix):].strip()
+    return title
 
 
 def is_meaningful_section(section: str) -> bool:
@@ -175,6 +194,7 @@ def get_documents_map() -> Dict[str, Dict]:
                 {
                     "doc_id": doc_id,
                     "title": title,
+                    "display_title": _display_title(title),
                     "breadcrumbs": row.get("breadcrumbs", []),
                     "normalized_file": row.get("normalized_file", "").strip(),
                     "source_file": row.get("source_file", "").strip(),
@@ -211,6 +231,28 @@ def get_documents_list(limit: int | None = None) -> List[Dict]:
     if limit is None:
         return documents
     return documents[:limit]
+
+
+def get_featured_documents(limit: int = 6) -> List[Dict]:
+    # Главная страница не должна показывать первые алфавитные записи корпуса:
+    # там часто встречаются служебные разделы и версии. Поэтому витрина
+    # собирается из заранее выбранных прикладных материалов поддержки.
+    documents_map = get_documents_map()
+    featured = [documents_map[doc_id] for doc_id in FEATURED_DOC_IDS if doc_id in documents_map]
+    if len(featured) >= limit:
+        return featured[:limit]
+
+    blocked_words = ("space details", "_topics", "без обновлений", ".net core")
+    for document in documents_map.values():
+        title = document["title"].lower()
+        if document in featured:
+            continue
+        if any(word in title for word in blocked_words):
+            continue
+        featured.append(document)
+        if len(featured) >= limit:
+            break
+    return featured[:limit]
 
 
 def get_document_or_404(doc_id: str) -> Dict:

@@ -18,6 +18,7 @@ from services.answer_service import generate_answer_from_query
 from services.article_service import (
     article_download_payload,
     build_content_disposition,
+    get_featured_documents,
     get_document_or_404,
     get_documents_list,
 )
@@ -30,6 +31,7 @@ from services.glossary_service import (
     get_glossary_categories,
     get_glossary_statistics,
     get_glossary_terms,
+    get_glossary_terms_by_category,
 )
 from services.access_content_service import (
     get_admin_pages,
@@ -267,7 +269,7 @@ def create_app() -> Flask:
         # Главная страница показывает краткое описание проекта и несколько
         # примеров статей, чтобы пользователь сразу видел предметную область.
         page = get_page_by_endpoint("index")
-        highlighted_docs = get_documents_list(limit=6)
+        highlighted_docs = get_featured_documents(limit=6)
         return render_template(
             "home.html",
             page_title=page["title"],
@@ -922,6 +924,7 @@ def create_app() -> Flask:
             page_title=page["title"],
             page=page,
             terms=get_glossary_terms(),
+            term_groups=get_glossary_terms_by_category(),
             categories=get_glossary_categories(),
             breadcrumbs=build_breadcrumbs((page["title"], None)),
         )
@@ -1035,6 +1038,12 @@ def create_app() -> Flask:
     @app.route("/about")
     def about():
         return redirect(url_for("about_system_page"))
+
+    @app.route("/favicon.ico")
+    def favicon():
+        # Chrome по умолчанию запрашивает /favicon.ico, даже если в HTML
+        # подключена SVG-иконка. Перенаправляем запрос на нейтральный favicon.
+        return redirect(url_for("static", filename="favicon.svg"))
 
     return app
 

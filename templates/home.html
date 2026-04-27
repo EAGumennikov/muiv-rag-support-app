@@ -39,7 +39,7 @@
     <div class="card-grid">
         {% for article in featured_articles %}
         <article class="info-card">
-            <h3><a href="{{ url_for('article_detail', doc_id=article.doc_id) }}">{{ article.title }}</a></h3>
+            <h3><a href="{{ url_for('article_detail', doc_id=article.doc_id) }}">{{ article.display_title or article.title }}</a></h3>
             <p class="muted-text">{{ article.breadcrumbs | join(" > ") }}</p>
             <a class="text-link" href="{{ url_for('article_detail', doc_id=article.doc_id) }}">Открыть статью</a>
         </article>

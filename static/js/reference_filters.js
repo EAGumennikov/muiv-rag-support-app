@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const searchInput = root.querySelector("[data-reference-search]");
     const categorySelect = root.querySelector("[data-reference-category]");
     const items = Array.from(root.querySelectorAll("[data-reference-item]"));
+    const groups = Array.from(root.querySelectorAll("[data-reference-group]"));
     const emptyMessage = root.querySelector("[data-reference-empty]");
 
     // Фильтрация выполняется полностью на странице: справочники небольшие,
@@ -31,6 +32,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (emptyMessage) {
             emptyMessage.classList.toggle("is-hidden", visibleCount !== 0);
         }
+
+        groups.forEach((group) => {
+            const hasVisibleItems = Boolean(group.querySelector("[data-reference-item]:not(.is-hidden)"));
+            group.classList.toggle("is-hidden", !hasVisibleItems);
+        });
     }
 
     searchInput?.addEventListener("input", applyFilters);

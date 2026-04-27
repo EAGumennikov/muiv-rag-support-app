@@ -101,7 +101,23 @@ GLOSSARY_TERMS: list[dict[str, str]] = [
 
 
 def get_glossary_terms() -> list[dict[str, str]]:
-    return sorted(GLOSSARY_TERMS, key=lambda item: (item["category"], item["term"].lower()))
+    # Порядок сохраняет смешанную демонстрационную витрину, а не сухую
+    # алфавитную выдачу: сначала отраслевой контекст, затем ИТ / ИБ.
+    return list(GLOSSARY_TERMS)
+
+
+def get_glossary_terms_by_category() -> list[dict[str, Any]]:
+    # Для главного вида глоссария термины группируются в две колонки,
+    # чтобы отраслевые и ИТ-сокращения читались параллельно.
+    groups = []
+    for category in (INDUSTRY_CATEGORY, IT_SECURITY_CATEGORY):
+        groups.append(
+            {
+                "category": category,
+                "items": [item for item in GLOSSARY_TERMS if item["category"] == category],
+            }
+        )
+    return groups
 
 
 def get_glossary_categories() -> list[str]:

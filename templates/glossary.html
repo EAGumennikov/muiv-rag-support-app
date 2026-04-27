@@ -33,19 +33,26 @@
         </label>
     </div>
 
-    <div class="glossary-grid">
-        {% for item in terms %}
-        <article class="reference-card" data-reference-item data-category="{{ item.category }}" data-search="{{ item.term }} {{ item.expansion }} {{ item.comment }} {{ item.example }}">
-            <div class="reference-card-head">
-                <h3>{{ item.term }}</h3>
-                <span class="category-badge">{{ item.category }}</span>
+    <div class="glossary-columns">
+        {% for group in term_groups %}
+        <section class="glossary-column" data-reference-group aria-label="{{ group.category }}">
+            <h3>{{ group.category }}</h3>
+            <div class="glossary-column-list">
+                {% for item in group["items"] %}
+                <article class="reference-card" data-reference-item data-category="{{ item.category }}" data-search="{{ item.term }} {{ item.expansion }} {{ item.comment }} {{ item.example }}">
+                    <div class="reference-card-head">
+                        <h4>{{ item.term }}</h4>
+                        <span class="category-badge">{{ item.category }}</span>
+                    </div>
+                    <p class="reference-expansion">{{ item.expansion }}</p>
+                    <p>{{ item.comment }}</p>
+                    {% if item.example %}
+                    <p class="reference-note">{{ item.example }}</p>
+                    {% endif %}
+                </article>
+                {% endfor %}
             </div>
-            <p class="reference-expansion">{{ item.expansion }}</p>
-            <p>{{ item.comment }}</p>
-            {% if item.example %}
-            <p class="reference-note">{{ item.example }}</p>
-            {% endif %}
-        </article>
+        </section>
         {% endfor %}
     </div>
 
