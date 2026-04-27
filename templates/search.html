@@ -109,14 +109,12 @@
                 {% if source.breadcrumbs %}
                 <p class="source-breadcrumbs">{{ source.breadcrumbs | join(" > ") }}</p>
                 {% endif %}
-                {% if source.excerpt %}
-                <p class="source-excerpt">{{ source.excerpt }}</p>
-                {% endif %}
                 <div class="source-actions">
-                    <a class="button-secondary" href="{{ url_for('article_detail', doc_id=source.doc_id) }}">Открыть статью</a>
-                    <a class="button-secondary" href="{{ url_for('download_article', doc_id=source.doc_id) }}">Скачать markdown</a>
+                    <a class="button-secondary button-compact" href="{{ url_for('article_detail', doc_id=source.doc_id) }}">Открыть</a>
+                    <a class="button-secondary button-compact" href="{{ url_for('download_article', doc_id=source.doc_id) }}">MD</a>
+                    <a class="button-secondary button-compact" href="{{ url_for('export_article_docx', doc_id=source.doc_id) }}">DOCX</a>
                     {% if source.original_url %}
-                    <a class="button-secondary" href="{{ source.original_url }}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
+                    <a class="button-secondary button-compact" href="{{ source.original_url }}" target="_blank" rel="noopener noreferrer">Оригинал</a>
                     {% endif %}
                 </div>
             </article>

@@ -51,33 +51,29 @@ img {
 }
 
 .container {
-    width: min(1180px, calc(100% - 2rem));
+    width: min(1440px, calc(100% - 2rem));
     margin: 0 auto;
 }
 
 .site-header {
     /* Шапка объединяет публичную навигацию и закрытые действия без внешней символики. */
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.94);
+    background: #fff;
     border-bottom: 1px solid rgba(215, 224, 236, 0.96);
 }
 
 .header-inner {
     display: grid;
-    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(210px, 240px);
-    align-items: start;
+    grid-template-columns: minmax(250px, 300px) minmax(0, 1fr) minmax(180px, 220px);
+    align-items: center;
     gap: 1rem;
-    padding: 0.85rem 0;
+    padding: 0.75rem 0;
 }
 
 .brand {
     display: inline-flex;
     align-items: center;
     gap: 0.75rem;
-    min-width: 270px;
+    min-width: 0;
 }
 
 .brand-mark {
@@ -112,13 +108,13 @@ img {
 
 .brand-text strong {
     color: var(--text);
-    font-size: 1rem;
+    font-size: 0.95rem;
     line-height: 1.2;
 }
 
 .brand-text small {
     color: var(--muted);
-    font-size: 0.82rem;
+    font-size: 0.76rem;
     line-height: 1.25;
 }
 
@@ -128,8 +124,8 @@ img {
 
 .user-panel {
     display: grid;
-    gap: 0.45rem;
-    padding: 0.7rem 0.8rem;
+    gap: 0.25rem;
+    padding: 0.55rem 0.65rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface-soft);
@@ -138,7 +134,7 @@ img {
 .user-summary {
     display: grid;
     gap: 0.1rem;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
 }
 
 .user-summary strong {
@@ -157,6 +153,7 @@ img {
 .user-menu summary {
     cursor: pointer;
     color: var(--accent-dark);
+    font-size: 0.86rem;
     font-weight: 800;
     list-style: none;
 }
@@ -214,7 +211,7 @@ img {
 .user-logout {
     width: fit-content;
     color: var(--muted);
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 800;
 }
 
@@ -225,19 +222,17 @@ img {
 
 .main-nav {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 0.2rem;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
 }
 
 .main-nav a {
     flex: 0 0 auto;
-    padding: 0.5rem 0.62rem;
+    padding: 0.38rem 0.48rem;
     border-radius: var(--radius-sm);
     color: var(--muted);
-    font-size: 0.86rem;
+    font-size: 0.78rem;
     font-weight: 700;
     white-space: nowrap;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -404,6 +399,12 @@ img {
     transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 
+.button-compact {
+    min-height: 32px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.84rem;
+}
+
 .question-form button:disabled {
     cursor: not-allowed;
     opacity: 0.58;
@@ -526,7 +527,7 @@ img {
 }
 
 .results-grid {
-    grid-template-columns: 1.15fr 1fr;
+    grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
 }
 
 .search-results-grid {
@@ -537,9 +538,12 @@ img {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.info-card,
-.source-card {
+.info-card {
     padding: 1.4rem;
+}
+
+.source-card {
+    padding: 0.85rem;
 }
 
 .info-card,
@@ -610,9 +614,9 @@ img {
 }
 
 .source-label {
-    margin: 0 0 0.8rem;
+    margin: 0 0 0.35rem;
     color: var(--accent-dark);
-    font-size: 0.84rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -624,17 +628,25 @@ img {
     margin-top: 1rem;
 }
 
+.source-actions {
+    gap: 0.45rem;
+    margin-top: 0.65rem;
+}
+
 .source-cards {
     display: grid;
     gap: 1rem;
 }
 
 .source-card h3 {
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.15rem;
+    font-size: 1rem;
 }
 
 .source-breadcrumbs {
-    margin-bottom: 0.85rem;
+    margin-bottom: 0;
+    font-size: 0.88rem;
+    line-height: 1.45;
 }
 
 .source-excerpt {
@@ -1175,6 +1187,7 @@ img {
 
     .header-inner {
         grid-template-columns: 1fr;
+        align-items: stretch;
     }
 
     .brand {
@@ -1182,7 +1195,15 @@ img {
     }
 
     .main-nav {
-        justify-content: flex-start;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-content: stretch;
+        gap: 0.35rem;
+    }
+
+    .main-nav a {
+        width: 100%;
+        text-align: center;
     }
 
     .user-menu-links {
@@ -1205,7 +1226,7 @@ img {
 
 @media (max-width: 640px) {
     .container {
-        width: min(100% - 1rem, 1180px);
+        width: min(100% - 1rem, 1440px);
     }
 
     .hero-copy,

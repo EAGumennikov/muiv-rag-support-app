@@ -79,7 +79,8 @@ def build_prompt(query: str, context_blocks: str) -> str:
 5. Если есть шаги, оформи их списком.
 6. Не пересказывай весь контекст.
 7. Ответ должен быть компактным.
-8. В конце выведи блок "Источники".
+8. Не добавляй в текст ответа блок "Источники", "Источник 1", "Источник 2" и похожие подписи: источники отдельно покажет интерфейс.
+9. Заверши ответ законченным предложением, не обрывай шаги на середине.
 
 Вопрос:
 {query}
@@ -148,7 +149,7 @@ def generate_answer_from_query(
         max_context_chars=max_context_chars,
     )
     prompt = build_prompt(query, context_blocks)
-    answer = generate_answer(prompt)
+    answer = cleanup_answer_text(generate_answer(prompt))
     # Карточки источников готовятся отдельно от prompt, потому что у интерфейса
     # и у модели разные требования к представлению одного и того же источника.
     source_cards = build_source_cards(results)
@@ -165,3 +166,15 @@ def generate_answer_from_query(
         "prompt": prompt,
         "retrieval_results": results,
     }
+
+
+def cleanup_answer_text(answer: str) -> str:
+    # Интерфейс уже показывает источники отдельными карточками, поэтому
+    # удаляем источникоподобный хвост из текста ответа, если модель его добавила.
+    markers = ("\nИсточники:", "\nИсточник 1", "\n**Источники", "\n### Источники")
+    cleaned = (answer or "").strip()
+    for marker in markers:
+        index = cleaned.find(marker)
+        if index != -1:
+            cleaned = cleaned[:index].strip()
+    return cleaned

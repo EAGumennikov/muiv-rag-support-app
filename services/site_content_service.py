@@ -93,7 +93,7 @@ PUBLIC_PAGES: List[Dict] = [
     {
         "endpoint": "diagnostics_page",
         "route": "/diagnostics",
-        "menu_title": "Команды диагностики",
+        "menu_title": "Диагностика",
         "title": "Команды первой диагностики",
         "eyebrow": "Первая линия поддержки",
         "heading": "Команды первой диагностики",
@@ -177,7 +177,7 @@ PUBLIC_PAGES: List[Dict] = [
     {
         "endpoint": "about_kb_page",
         "route": "/about-kb",
-        "menu_title": "О базе знаний",
+        "menu_title": "О базе",
         "title": "О базе знаний",
         "eyebrow": "Источники знаний",
         "heading": "Структура и назначение корпуса знаний",
@@ -216,7 +216,7 @@ PUBLIC_PAGES: List[Dict] = [
     {
         "endpoint": "feedback_page",
         "route": "/feedback",
-        "menu_title": "Обратная связь",
+        "menu_title": "Связь",
         "title": "Обратная связь",
         "eyebrow": "Связь с пользователем",
         "heading": "Отправить отзыв или предложение",

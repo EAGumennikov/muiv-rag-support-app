@@ -40,7 +40,7 @@ def get_model_uri() -> str:
     return f"gpt://{folder_id}/deepseek-v32/latest"
 
 
-def generate_answer(prompt: str, temperature: float = 0.2, max_tokens: int = 700) -> str:
+def generate_answer(prompt: str, temperature: float = 0.2, max_tokens: int = 1200) -> str:
     # Ответ формируется в chat.completions-формате, чтобы логика вызова
     # была совместима с OpenAI-подобным интерфейсом и легко читалась в проекте.
     client = get_yandex_client()

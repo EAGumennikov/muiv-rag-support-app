@@ -153,19 +153,12 @@ document.addEventListener("DOMContentLoaded", () => {
             card.appendChild(breadcrumbs);
         }
 
-        if (source.excerpt) {
-            const excerpt = document.createElement("p");
-            excerpt.className = "source-excerpt";
-            excerpt.textContent = source.excerpt;
-            card.appendChild(excerpt);
-        }
-
         const actions = document.createElement("div");
         actions.className = "source-actions";
-        appendAction(actions, source.article_url, "Открыть статью");
-        appendAction(actions, source.download_url, "Скачать markdown");
-        appendAction(actions, source.article_docx_url, "Скачать docx");
-        appendAction(actions, source.original_url, "Открыть оригинал", true);
+        appendAction(actions, source.article_url, "Открыть");
+        appendAction(actions, source.download_url, "MD");
+        appendAction(actions, source.article_docx_url, "DOCX");
+        appendAction(actions, source.original_url, "Оригинал", true);
         card.appendChild(actions);
 
         return card;
@@ -176,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         const link = document.createElement("a");
-        link.className = "button-secondary";
+        link.className = "button-secondary button-compact";
         link.href = href;
         link.textContent = label;
         if (external) {

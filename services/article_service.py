@@ -42,12 +42,12 @@ GENERIC_SECTIONS = {
 }
 
 FEATURED_DOC_IDS = [
-    "339495505",
     "263032388",
-    "238762948",
-    "371817387",
-    "294401372",
-    "348174066",
+    "311338753",
+    "311338890",
+    "191106593",
+    "365860560",
+    "417762318",
 ]
 
 
@@ -72,8 +72,9 @@ def _display_title(title: str) -> str:
     title = _normalize_text(title)
     for prefix in ("База знаний : ", "База знаний: "):
         if title.startswith(prefix):
-            return title[len(prefix):].strip()
-    return title
+            title = title[len(prefix):].strip()
+            break
+    return title.lstrip("_").strip()
 
 
 def is_meaningful_section(section: str) -> bool:
@@ -242,12 +243,25 @@ def get_featured_documents(limit: int = 6) -> List[Dict]:
     if len(featured) >= limit:
         return featured[:limit]
 
-    blocked_words = ("space details", "_topics", "без обновлений", ".net core")
+    priority_words = (
+        "принтер",
+        "сеть",
+        "dns",
+        "пароль",
+        "vpn",
+        "rdp",
+        "доступ",
+        "учетн",
+        "сертификат",
+    )
+    blocked_words = ("space details", "_topics", "без обновлений", ".net core", "2.12.", "1.7.")
     for document in documents_map.values():
-        title = document["title"].lower()
+        haystack = (document["title"] + " " + " > ".join(document.get("breadcrumbs", []))).lower()
         if document in featured:
             continue
-        if any(word in title for word in blocked_words):
+        if any(word in haystack for word in blocked_words):
+            continue
+        if not any(word in haystack for word in priority_words):
             continue
         featured.append(document)
         if len(featured) >= limit:
