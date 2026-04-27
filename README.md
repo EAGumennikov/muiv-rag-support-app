@@ -45,7 +45,7 @@
 - config/ - шаблоны конфигурации
 - docs/ - репозиторная документация по архитектуре, RAG, SQL, ролям, экспорту и требованиям
 
-Основной вход в документацию: [docs/index.md](/Users/eagumennikov/Projects/muiv-rag-support-app/docs/index.md).
+Основной вход в документацию: [docs/00_Обзор_документации.md](/Users/eagumennikov/Projects/muiv-rag-support-app/docs/00_Обзор_документации.md).
 
 ## Зависимости
 См. requirements.txt
@@ -260,4 +260,4 @@ Backlog дальнейшего развития:
 - расширение экспортов: выгрузка отдельных отчетов по ролям, фильтры по датам и экспорт подборок источников;
 - подготовка схемы БД, подсчет логических строк кода, браузерная проверка и размещение на бесплатном хостинге.
 
-Отдельная заметка по текущему SQL-слою находится в [docs/sql_layer_notes.md](/Users/eagumennikov/Projects/muiv-rag-support-app/docs/sql_layer_notes.md).
+Отдельная заметка по текущему SQL-слою находится в [docs/14_Заметки_по_SQL_слою.md](/Users/eagumennikov/Projects/muiv-rag-support-app/docs/14_Заметки_по_SQL_слою.md).
