@@ -338,6 +338,149 @@ def list_recent_rag_answers(limit: int = 20, user_id: int | None = None) -> list
         ]
 
 
+def get_rag_answer_export_payload(rag_answer_id: int) -> dict[str, Any] | None:
+    # Экспорт ответа требует больше данных, чем карточка в кабинете:
+    # исходный вопрос, владельца, полный текст ответа и перечень источников.
+    # Служебные поля вроде prompt_text наружу не отдаются.
+    with session_scope() as session:
+        answer = session.query(RagAnswer).filter(RagAnswer.id == rag_answer_id).one_or_none()
+        if answer is None:
+            return None
+
+        query = answer.search_query
+        sources = [
+            {
+                "title": source.title or source.doc_id,
+                "breadcrumbs": json.loads(source.breadcrumbs_json or "[]"),
+                "section_label": source.section_label,
+                "original_url": source.original_url,
+                "doc_id": source.doc_id,
+            }
+            for source in sorted(answer.sources, key=lambda item: item.sort_order)
+        ]
+        return {
+            "id": answer.id,
+            "answer_text": answer.answer_text,
+            "created_at": answer.created_at.isoformat(sep=" ", timespec="seconds"),
+            "question_text": query.question_text if query else "",
+            "query_created_at": query.created_at.isoformat(sep=" ", timespec="seconds") if query else "",
+            "user_id": query.user_id if query else None,
+            "username": query.user.username if query and query.user else "",
+            "sources": sources,
+        }
+
+
+def list_user_history_export_rows(user_id: int) -> list[dict[str, Any]]:
+    # Пользовательская выгрузка строится только по текущему user_id.
+    # Это не административный сценарий, поэтому чужие записи сюда не попадают.
+    with session_scope() as session:
+        rows = (
+            session.query(SearchQuery)
+            .filter(SearchQuery.user_id == user_id)
+            .order_by(SearchQuery.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "question_text": row.question_text,
+                "retrieved_chunks_count": row.retrieved_chunks_count,
+                "used_chunks_count": row.used_chunks_count,
+                "has_answer": "Да" if row.rag_answer else "Нет",
+                "answer_excerpt": _excerpt(row.rag_answer.answer_text if row.rag_answer else "", 260),
+            }
+            for row in rows
+        ]
+
+
+def list_feedback_export_rows() -> list[dict[str, Any]]:
+    # Административная выгрузка feedback содержит прикладные поля обращения,
+    # но не включает внутренние идентификаторы файлов или технические пути.
+    with session_scope() as session:
+        rows = (
+            session.query(FeedbackMessage)
+            .outerjoin(User, FeedbackMessage.user_id == User.id)
+            .order_by(FeedbackMessage.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "username": row.user.username if row.user else "",
+                "name": row.name,
+                "email": row.email,
+                "topic": row.topic,
+                "message": row.message,
+                "message_excerpt": _excerpt(row.message, 320),
+                "status": row.status,
+            }
+            for row in rows
+        ]
+
+
+def list_search_history_export_rows() -> list[dict[str, Any]]:
+    # Общая история нужна только администратору, поэтому сервис возвращает
+    # все записи, включая публичные запросы без пользователя.
+    with session_scope() as session:
+        rows = (
+            session.query(SearchQuery)
+            .outerjoin(User, SearchQuery.user_id == User.id)
+            .order_by(SearchQuery.created_at.desc())
+            .all()
+        )
+        return [
+            {
+                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "username": row.user.username if row.user else "",
+                "question_text": row.question_text,
+                "retrieved_chunks_count": row.retrieved_chunks_count,
+                "used_chunks_count": row.used_chunks_count,
+                "has_answer": "Да" if row.rag_answer else "Нет",
+                "answer_excerpt": _excerpt(row.rag_answer.answer_text if row.rag_answer else "", 260),
+            }
+            for row in rows
+        ]
+
+
+def get_admin_statistics_export_payload() -> dict[str, Any]:
+    # Статистическая выгрузка собирает агрегаты для отчета администратора:
+    # счетчики сущностей, распределение feedback по статусам и свежий аудит.
+    with session_scope() as session:
+        feedback_status_rows = (
+            session.query(FeedbackMessage.status, func.count(FeedbackMessage.id))
+            .group_by(FeedbackMessage.status)
+            .order_by(FeedbackMessage.status.asc())
+            .all()
+        )
+        return {
+            "summary": [
+                {"metric": "Пользователи", "value": session.query(func.count(User.id)).scalar() or 0},
+                {"metric": "Роли", "value": session.query(func.count(Role.id)).scalar() or 0},
+                {"metric": "Сообщения feedback", "value": session.query(func.count(FeedbackMessage.id)).scalar() or 0},
+                {"metric": "Поисковые запросы", "value": session.query(func.count(SearchQuery.id)).scalar() or 0},
+                {"metric": "RAG-ответы", "value": session.query(func.count(RagAnswer.id)).scalar() or 0},
+            ],
+            "feedback_statuses": [
+                {"status": status, "count": count}
+                for status, count in feedback_status_rows
+            ],
+            "audit": [
+                {
+                    "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                    "event_type": row.event_type,
+                    "entity_type": row.entity_type,
+                    "entity_id": row.entity_id,
+                }
+                for row in (
+                    session.query(AuditLog)
+                    .order_by(AuditLog.created_at.desc())
+                    .limit(30)
+                    .all()
+                )
+            ],
+        }
+
+
 def list_recent_audit_logs(limit: int = 20) -> list[dict[str, Any]]:
     with session_scope() as session:
         rows = (
@@ -355,6 +498,15 @@ def list_recent_audit_logs(limit: int = 20) -> list[dict[str, Any]]:
             }
             for row in rows
         ]
+
+
+def _excerpt(text: str, limit: int) -> str:
+    # В табличных выгрузках длинные ответы и обращения лучше показывать
+    # кратким фрагментом, чтобы XLSX оставался читаемым.
+    value = " ".join((text or "").split())
+    if len(value) <= limit:
+        return value
+    return value[: limit - 3].rstrip() + "..."
 
 
 def get_admin_dashboard_stats() -> list[dict[str, Any]]:

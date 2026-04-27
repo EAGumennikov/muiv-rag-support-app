@@ -5,3 +5,5 @@ numpy
 Flask
 Markdown
 SQLAlchemy
+python-docx
+openpyxl
