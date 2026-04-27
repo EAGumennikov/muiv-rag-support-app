@@ -30,7 +30,9 @@
 - templates/ - HTML-шаблоны веб-интерфейса
 - static/ - статические ресурсы веб-интерфейса
 - config/ - шаблоны конфигурации
-- docs/ - технические заметки по проекту
+- docs/ - репозиторная документация по архитектуре, RAG, SQL, ролям, экспорту и требованиям
+
+Основной вход в документацию: [docs/index.md](/Users/eagumennikov/Projects/muiv-rag-support-app/docs/index.md).
 
 ## Зависимости
 См. requirements.txt
