@@ -18,9 +18,20 @@
             <span class="eyebrow">Запрос</span>
             <h2>Задать вопрос</h2>
         </div>
-        <p class="panel-hint">Сформулируйте вопрос так, как его мог бы описать пользователь или специалист поддержки.</p>
+        {% if current_user %}
+        <p class="panel-hint">
+            {% if rag_is_unlimited %}
+            Для администратора дневной лимит RAG-запросов не применяется.
+            {% else %}
+            Дневной лимит: {{ rag_daily_limit }}, использовано сегодня: {{ rag_used_today }}, осталось: {{ rag_limit_remaining }}.
+            {% endif %}
+        </p>
+        {% else %}
+        <p class="panel-hint">Страница поиска открыта публично, а формирование ответа доступно после входа.</p>
+        {% endif %}
     </div>
-    <form class="question-form" action="{{ url_for('ask') }}" method="post">
+    {% if current_user and can_submit_rag %}
+    <form id="rag-search-form" class="question-form" action="{{ url_for('ask') }}" method="post">
         <label for="question">Введите вопрос пользователя</label>
         <textarea
             id="question"
@@ -28,12 +39,25 @@
             rows="6"
             placeholder="Например: как подключить сетевой принтер и что проверить, если печать не начинается?"
         >{{ question }}</textarea>
-        <button type="submit">Получить ответ</button>
+        <button id="rag-submit-button" type="submit" {% if rag_limit_remaining == 0 %}disabled{% endif %}>Получить ответ</button>
         <p class="form-note">Система выполнит retrieval, сформирует ответ и покажет понятные пользователю источники.</p>
         {% if error_message %}
-        <div class="status-message status-error">{{ error_message }}</div>
+        <div id="rag-error" class="status-message status-error">{{ error_message }}</div>
+        {% else %}
+        <div id="rag-error" class="status-message status-error is-hidden"></div>
         {% endif %}
+        <div id="rag-loading" class="loading-state is-hidden" aria-live="polite">
+            <span class="loading-dot"></span>
+            <span>Формируется ответ по материалам базы знаний...</span>
+        </div>
     </form>
+    {% else %}
+    <div class="access-notice">
+        <h3>Формирование ответа доступно авторизованным пользователям</h3>
+        <p>Формирование ответа относится к защищенному контуру системы и доступно специалистам поддержки, редакторам базы знаний и администраторам после входа.</p>
+        <a class="button-primary" href="{{ url_for('login_page', next=url_for('search_page')) }}">Войти</a>
+    </div>
+    {% endif %}
 </section>
 
 <section class="results-grid search-results-grid">
@@ -47,11 +71,16 @@
             <p class="panel-hint">Ответ сформирован по найденным материалам базы знаний.</p>
             {% endif %}
         </div>
-        <div class="result-block markdown-content">
+        <div id="rag-answer" class="result-block markdown-content">
             {% if answer_html %}
             {{ answer_html }}
             {% else %}
             <p class="placeholder-text">После отправки вопроса здесь появится итоговый ответ, оформленный как читаемый текст со списками и кодовыми блоками.</p>
+            {% endif %}
+        </div>
+        <div id="rag-export" class="answer-actions {% if not rag_answer_export_url %}is-hidden{% endif %}">
+            {% if rag_answer_export_url %}
+            <a class="button-secondary" href="{{ rag_answer_export_url }}">Скачать ответ DOCX</a>
             {% endif %}
         </div>
     </article>
@@ -66,8 +95,8 @@
             <p class="panel-hint">Откройте статью целиком или скачайте markdown-версию для подробного просмотра.</p>
             {% endif %}
         </div>
+        <div id="rag-sources" class="source-cards {% if not sources %}is-empty{% endif %}">
         {% if sources %}
-        <div class="source-cards">
             {% for source in sources %}
             <article class="source-card">
                 <p class="source-label">Источник из базы знаний</p>
@@ -92,10 +121,10 @@
                 </div>
             </article>
             {% endfor %}
-        </div>
         {% else %}
         <p class="placeholder-text">После выполнения retrieval здесь появятся карточки использованных статей с действиями для просмотра и скачивания.</p>
         {% endif %}
+        </div>
     </article>
 </section>
 
@@ -113,5 +142,11 @@
         </div>
     </div>
 </section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if current_user and can_submit_rag %}
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endif %}
 {% endblock %}

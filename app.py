@@ -30,6 +30,7 @@ from services.access_content_service import (
 from services.auth_service import (
     ROLE_ADMIN,
     ROLE_KNOWLEDGE_EDITOR,
+    ROLE_SUPPORT_USER,
     SESSION_USER_ID_KEY,
     authenticate_user,
     current_user_from_context,
@@ -42,6 +43,7 @@ from services.auth_service import (
     user_primary_role_label,
 )
 from services.db_service import (
+    count_user_search_queries_for_day,
     get_admin_dashboard_stats,
     get_admin_statistics_export_payload,
     get_content_statistics,
@@ -77,6 +79,11 @@ from services.markdown_service import render_markdown
 from services.site_content_service import get_page_by_endpoint, get_public_navigation
 
 
+RAG_DAILY_LIMIT_ENV = "RAG_DAILY_LIMIT"
+DEFAULT_RAG_DAILY_LIMIT = 10
+RAG_ALLOWED_ROLES = (ROLE_SUPPORT_USER, ROLE_KNOWLEDGE_EDITOR, ROLE_ADMIN)
+
+
 def build_breadcrumbs(*items: tuple[str, str | None]):
     # Хлебные крошки собираются централизованно, чтобы все страницы сайта
     # выглядели единообразно и не дублировали одну и ту же логику в шаблонах.
@@ -106,11 +113,17 @@ def render_search_page(
     sources: list[dict] | None = None,
     debug: dict | None = None,
     error_message: str = "",
+    rag_answer_id: int | None = None,
 ):
     # Экран поиска рендерится отдельной функцией, потому что один и тот же
     # шаблон используется и при первом открытии страницы, и после отправки
     # вопроса, и в случае ошибки обработки запроса.
     page = get_page_by_endpoint("search_page")
+    current_user = current_user_from_context()
+    rag_daily_limit = get_rag_daily_limit()
+    rag_used_today = count_user_search_queries_for_day(current_user.id) if current_user else 0
+    is_admin = user_has_any_role(current_user, [ROLE_ADMIN])
+    rag_limit_remaining = None if is_admin else max(rag_daily_limit - rag_used_today, 0)
     return render_template(
         "search.html",
         page_title=page["title"],
@@ -121,7 +134,51 @@ def render_search_page(
         sources=sources or [],
         debug=debug or {},
         error_message=error_message,
+        rag_answer_id=rag_answer_id,
+        rag_answer_export_url=url_for("export_rag_answer", rag_answer_id=rag_answer_id) if rag_answer_id else "",
+        rag_daily_limit=rag_daily_limit,
+        rag_used_today=rag_used_today,
+        rag_limit_remaining=rag_limit_remaining,
+        rag_is_unlimited=is_admin,
+        can_submit_rag=bool(current_user and user_has_any_role(current_user, RAG_ALLOWED_ROLES)),
     )
+
+
+def get_rag_daily_limit() -> int:
+    # Значение лимита берется из окружения, чтобы demo-хостинг можно было
+    # настроить без изменения кода. Некорректное значение заменяется безопасным.
+    try:
+        return max(1, int(os.getenv(RAG_DAILY_LIMIT_ENV, str(DEFAULT_RAG_DAILY_LIMIT))))
+    except ValueError:
+        return DEFAULT_RAG_DAILY_LIMIT
+
+
+def build_json_error(message: str, error_code: str, status_code: int):
+    # JSON-ошибки имеют стабильную структуру для AJAX-интерфейса:
+    # фронтенд показывает message и при необходимости реагирует на error_code.
+    return jsonify({"ok": False, "message": message, "error_code": error_code}), status_code
+
+
+def public_source_payload(source: dict) -> dict:
+    # Во фронтенд передаются только пользовательские поля источника.
+    # Технические пути и служебные имена файлов не раскрываются в интерфейсе.
+    doc_id = (source.get("doc_id") or "").strip()
+    payload = {
+        "doc_id": doc_id,
+        "title": source.get("title") or doc_id or "Источник базы знаний",
+        "section": source.get("section") or "",
+        "breadcrumbs": source.get("breadcrumbs") or [],
+        "excerpt": source.get("excerpt") or "",
+        "original_url": source.get("original_url") or "",
+        "article_url": "",
+        "download_url": "",
+        "article_docx_url": "",
+    }
+    if doc_id:
+        payload["article_url"] = url_for("article_detail", doc_id=doc_id)
+        payload["download_url"] = url_for("download_article", doc_id=doc_id)
+        payload["article_docx_url"] = url_for("export_article_docx", doc_id=doc_id)
+    return payload
 
 
 def render_secure_section(
@@ -742,7 +799,8 @@ def create_app() -> Flask:
     @app.route("/ask", methods=["POST"])
     def ask():
         # Один и тот же маршрут поддерживает и обычную HTML-форму, и JSON-запросы.
-        # Это позволяет использовать его и в веб-интерфейсе, и в будущем — в AJAX.
+        # JSON-ветка используется AJAX-интерфейсом, HTML-ветка остается
+        # совместимой для случаев, когда JavaScript отключен.
         is_json_request = request.is_json
         payload = request.get_json(silent=True) if is_json_request else None
         question = str((payload or {}).get("question", "")).strip() if payload else request.form.get("question", "").strip()
@@ -750,40 +808,70 @@ def create_app() -> Flask:
         if not question:
             error_message = "Введите вопрос, чтобы выполнить поиск по базе знаний."
             if is_json_request:
-                return jsonify({"error": error_message}), 400
+                return build_json_error(error_message, "empty_question", 400)
             return render_search_page(question=question, error_message=error_message), 400
+
+        current_user = current_user_from_context()
+        if current_user is None:
+            # /ask запускает retrieval и внешний генеративный API, поэтому
+            # выполнение ответа относится к защищенному контуру приложения.
+            error_message = "Формирование ответа относится к защищенному контуру системы и доступно авторизованным пользователям."
+            if is_json_request:
+                return build_json_error(error_message, "auth_required", 401)
+            return render_search_page(question=question, error_message=error_message), 401
+
+        if not user_has_any_role(current_user, RAG_ALLOWED_ROLES):
+            error_message = "У текущей учетной записи нет прав на формирование RAG-ответа."
+            if is_json_request:
+                return build_json_error(error_message, "forbidden", 403)
+            return render_search_page(question=question, error_message=error_message), 403
+
+        rag_daily_limit = get_rag_daily_limit()
+        if not user_has_any_role(current_user, [ROLE_ADMIN]):
+            used_today = count_user_search_queries_for_day(current_user.id)
+            if used_today >= rag_daily_limit:
+                # Лимит проверяется до retrieval и обращения к внешнему API:
+                # превышенный запрос не расходует вычислительный контур.
+                error_message = f"Дневной лимит RAG-запросов исчерпан: {rag_daily_limit} в сутки."
+                if is_json_request:
+                    return build_json_error(error_message, "daily_limit_exceeded", 429)
+                return render_search_page(question=question, error_message=error_message), 429
 
         try:
             result = generate_answer_from_query(query=question)
         except Exception as exc:
-            error_message = f"Не удалось обработать запрос: {exc}"
+            error_message = "Не удалось обработать запрос. Попробуйте уточнить вопрос или повторить попытку позже."
             if is_json_request:
-                return jsonify({"error": error_message}), 500
+                return build_json_error(error_message, "generation_error", 500)
             return render_search_page(question=question, error_message=error_message), 500
 
+        saved_payload = {}
         try:
-            current_user = current_user_from_context()
-            save_search_interaction(
+            saved_payload = save_search_interaction(
                 question=question,
                 result=result,
                 channel="web",
-                user_id=current_user.id if current_user else None,
+                user_id=current_user.id,
             )
         except Exception:
             # Ошибки сохранения истории не должны ломать основной пользовательский сценарий.
             pass
 
         if is_json_request:
-            # Для программного клиента возвращаем уже готовые данные ответа
-            # и HTML-представление markdown, чтобы фронтенд мог выбрать формат.
+            # Для AJAX возвращаем только данные, нужные пользовательскому интерфейсу:
+            # текст ответа, безопасные карточки источников и ссылку на экспорт.
+            rag_answer_id = saved_payload.get("rag_answer_id")
             return jsonify(
                 {
+                    "ok": True,
                     "question": result["query"],
                     "answer": result["answer"],
                     "answer_html": str(render_markdown(result["answer"])),
-                    "sources": result["sources"],
+                    "sources": [public_source_payload(source) for source in result["sources"]],
                     "source_labels": result.get("source_labels", []),
                     "debug": result["debug"],
+                    "rag_answer_id": rag_answer_id,
+                    "export_url": url_for("export_rag_answer", rag_answer_id=rag_answer_id) if rag_answer_id else "",
                 }
             )
 
@@ -792,6 +880,7 @@ def create_app() -> Flask:
             answer_text=result["answer"],
             sources=result["sources"],
             debug=result["debug"],
+            rag_answer_id=saved_payload.get("rag_answer_id"),
         )
 
     @app.route("/articles")

@@ -10,6 +10,7 @@ from __future__ import annotations
 """
 
 import json
+from datetime import date, datetime, time
 from typing import Any
 
 from sqlalchemy import func, inspect, text
@@ -317,6 +318,26 @@ def list_recent_search_queries(limit: int = 20, user_id: int | None = None) -> l
             }
             for row in rows
         ]
+
+
+def count_user_search_queries_for_day(user_id: int, target_day: date | None = None) -> int:
+    # Дневной лимит RAG считается по уже сохраненной SQL-истории.
+    # Такой подход не требует внешнего rate-limit сервиса и работает в demo-контуре.
+    day = target_day or date.today()
+    day_start = datetime.combine(day, time.min)
+    day_end = datetime.combine(day, time.max)
+
+    with session_scope() as session:
+        return (
+            session.query(func.count(SearchQuery.id))
+            .filter(
+                SearchQuery.user_id == user_id,
+                SearchQuery.created_at >= day_start,
+                SearchQuery.created_at <= day_end,
+            )
+            .scalar()
+            or 0
+        )
 
 
 def list_recent_rag_answers(limit: int = 20, user_id: int | None = None) -> list[dict[str, Any]]:
