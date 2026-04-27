@@ -10,7 +10,7 @@ from __future__ import annotations
 """
 
 import json
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from sqlalchemy import func, inspect, text
@@ -30,6 +30,25 @@ from db.models import (
     User,
     UserRole,
 )
+
+LOCAL_UTC_OFFSET = timedelta(hours=3)
+
+
+def format_display_datetime(value: datetime | None) -> str:
+    # В SQLite даты хранятся как UTC без timezone, а пользователю удобнее
+    # видеть время локального demo-контура. Поэтому отображение переводится
+    # в московское время, не меняя сами сохраненные значения в базе.
+    if value is None:
+        return ""
+    return (value + LOCAL_UTC_OFFSET).isoformat(sep=" ", timespec="seconds")
+
+
+def _local_day_bounds_as_utc(day: date) -> tuple[datetime, datetime]:
+    # Дневной лимит считается по локальному календарному дню пользователя,
+    # но в SQL сравнивается с UTC-naive timestamp, который пишет модель.
+    local_start = datetime.combine(day, time.min)
+    local_end = datetime.combine(day, time.max)
+    return local_start - LOCAL_UTC_OFFSET, local_end - LOCAL_UTC_OFFSET
 
 
 def initialize_database() -> None:
@@ -294,7 +313,7 @@ def list_feedback_messages(limit: int = 20, user_id: int | None = None) -> list[
                 "topic": row.topic,
                 "message": row.message,
                 "status": row.status,
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
             }
             for row in rows
         ]
@@ -314,7 +333,7 @@ def list_recent_search_queries(limit: int = 20, user_id: int | None = None) -> l
                 "question_text": row.question_text,
                 "retrieved_chunks_count": row.retrieved_chunks_count,
                 "used_chunks_count": row.used_chunks_count,
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
             }
             for row in rows
         ]
@@ -324,8 +343,7 @@ def count_user_search_queries_for_day(user_id: int, target_day: date | None = No
     # Дневной лимит RAG считается по уже сохраненной SQL-истории.
     # Такой подход не требует внешнего rate-limit сервиса и работает в demo-контуре.
     day = target_day or date.today()
-    day_start = datetime.combine(day, time.min)
-    day_end = datetime.combine(day, time.max)
+    day_start, day_end = _local_day_bounds_as_utc(day)
 
     with session_scope() as session:
         return (
@@ -353,7 +371,7 @@ def list_recent_rag_answers(limit: int = 20, user_id: int | None = None) -> list
                 "question_text": row.search_query.question_text if row.search_query else "",
                 "username": row.search_query.user.username if row.search_query and row.search_query.user else "",
                 "answer_text": row.answer_text[:240] + ("..." if len(row.answer_text) > 240 else ""),
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
             }
             for row in rows
         ]
@@ -382,9 +400,9 @@ def get_rag_answer_export_payload(rag_answer_id: int) -> dict[str, Any] | None:
         return {
             "id": answer.id,
             "answer_text": answer.answer_text,
-            "created_at": answer.created_at.isoformat(sep=" ", timespec="seconds"),
+            "created_at": format_display_datetime(answer.created_at),
             "question_text": query.question_text if query else "",
-            "query_created_at": query.created_at.isoformat(sep=" ", timespec="seconds") if query else "",
+            "query_created_at": format_display_datetime(query.created_at) if query else "",
             "user_id": query.user_id if query else None,
             "username": query.user.username if query and query.user else "",
             "sources": sources,
@@ -403,7 +421,7 @@ def list_user_history_export_rows(user_id: int) -> list[dict[str, Any]]:
         )
         return [
             {
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
                 "question_text": row.question_text,
                 "retrieved_chunks_count": row.retrieved_chunks_count,
                 "used_chunks_count": row.used_chunks_count,
@@ -426,7 +444,7 @@ def list_feedback_export_rows() -> list[dict[str, Any]]:
         )
         return [
             {
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
                 "username": row.user.username if row.user else "",
                 "name": row.name,
                 "email": row.email,
@@ -451,7 +469,7 @@ def list_search_history_export_rows() -> list[dict[str, Any]]:
         )
         return [
             {
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
                 "username": row.user.username if row.user else "",
                 "question_text": row.question_text,
                 "retrieved_chunks_count": row.retrieved_chunks_count,
@@ -487,7 +505,7 @@ def get_admin_statistics_export_payload() -> dict[str, Any]:
             ],
             "audit": [
                 {
-                    "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                    "created_at": format_display_datetime(row.created_at),
                     "event_type": row.event_type,
                     "entity_type": row.entity_type,
                     "entity_id": row.entity_id,
@@ -515,7 +533,7 @@ def list_recent_audit_logs(limit: int = 20) -> list[dict[str, Any]]:
                 "event_type": row.event_type,
                 "entity_type": row.entity_type,
                 "entity_id": row.entity_id,
-                "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+                "created_at": format_display_datetime(row.created_at),
             }
             for row in rows
         ]
@@ -578,7 +596,7 @@ def get_feedback_message(feedback_id: int) -> dict[str, Any] | None:
             "topic": row.topic,
             "message": row.message,
             "status": row.status,
-            "created_at": row.created_at.isoformat(sep=" ", timespec="seconds"),
+            "created_at": format_display_datetime(row.created_at),
         }
 
 

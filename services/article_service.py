@@ -42,12 +42,12 @@ GENERIC_SECTIONS = {
 }
 
 FEATURED_DOC_IDS = [
-    "263032388",
+    "369592174",
     "311338753",
     "311338890",
     "191106593",
-    "365860560",
     "417762318",
+    "311347860",
 ]
 
 
@@ -248,13 +248,12 @@ def get_featured_documents(limit: int = 6) -> List[Dict]:
         "сеть",
         "dns",
         "пароль",
-        "vpn",
         "rdp",
         "доступ",
         "учетн",
         "сертификат",
     )
-    blocked_words = ("space details", "_topics", "без обновлений", ".net core", "2.12.", "1.7.")
+    blocked_words = ("space details", "_topics", "без обновлений", ".net core", "2.12.", "1.7.", "vpn", "openvpn")
     for document in documents_map.values():
         haystack = (document["title"] + " " + " > ".join(document.get("breadcrumbs", []))).lower()
         if document in featured:
