@@ -444,7 +444,7 @@ def create_app() -> Flask:
             section_navigation=get_cabinet_pages(),
             quick_links=[
                 {"label": "Поиск по базе знаний", "url": url_for("search_page"), "note": "Основной рабочий сценарий"},
-                {"label": "Статьи базы знаний", "url": url_for("articles_page"), "note": "Просмотр источников"},
+                {"label": "База знаний", "url": url_for("articles_page"), "note": "Просмотр источников"},
                 {"label": "Отраслевой глоссарий", "url": url_for("glossary_page"), "note": "Термины и сокращения"},
                 {"label": "Команды диагностики", "url": url_for("diagnostics_page"), "note": "Памятка первой линии"},
                 {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
@@ -558,12 +558,12 @@ def create_app() -> Flask:
             navigation_title="Рабочие разделы редактора",
             section_navigation=get_editor_pages(),
             quick_links=[
-                {"label": "Статьи", "url": url_for("articles_page"), "note": "Каталог материалов"},
+                {"label": "База знаний", "url": url_for("articles_page"), "note": "Каталог материалов"},
                 {"label": "Поиск", "url": url_for("search_page"), "note": "Проверка RAG-сценария"},
                 {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Справочные термины"},
                 {"label": "Команды диагностики", "url": url_for("diagnostics_page"), "note": "Памятка поддержки"},
                 {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
-                {"label": "Тестирование", "url": url_for("testing_page"), "note": "Подходы к проверке"},
+                {"label": "Проверка знаний", "url": url_for("testing_page"), "note": "Самопроверка сотрудника"},
             ],
         )
 
@@ -953,11 +953,19 @@ def create_app() -> Flask:
 
     @app.route("/about-system")
     def about_system_page():
-        return render_content_page("about_system_page")
+        # Старый URL оставлен для совместимости с документацией и закладками,
+        # а основной публичный раздел теперь называется "О проекте".
+        return redirect(url_for("about_project_page"))
 
     @app.route("/about-kb")
     def about_kb_page():
-        return render_content_page("about_kb_page")
+        # Сведения о базе знаний перенесены в общий раздел "О проекте",
+        # поэтому прежний маршрут не отдает 404, а ведет на актуальную страницу.
+        return redirect(url_for("about_project_page"))
+
+    @app.route("/about-project")
+    def about_project_page():
+        return render_content_page("about_project_page")
 
     @app.route("/testing")
     def testing_page():
@@ -1008,7 +1016,7 @@ def create_app() -> Flask:
             article=document,
             article_html=render_markdown(document["body_markdown_text"]),
             breadcrumbs=build_breadcrumbs(
-                ("Статьи", url_for("articles_page")),
+                ("База знаний", url_for("articles_page")),
                 (document["title"], None),
             ),
         )
@@ -1037,7 +1045,7 @@ def create_app() -> Flask:
 
     @app.route("/about")
     def about():
-        return redirect(url_for("about_system_page"))
+        return redirect(url_for("about_project_page"))
 
     @app.route("/favicon.ico")
     def favicon():
