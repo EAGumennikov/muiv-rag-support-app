@@ -21,6 +21,16 @@ from services.article_service import (
     get_document_or_404,
     get_documents_list,
 )
+from services.diagnostics_service import (
+    get_diagnostic_categories,
+    get_diagnostic_commands,
+    get_diagnostics_statistics,
+)
+from services.glossary_service import (
+    get_glossary_categories,
+    get_glossary_statistics,
+    get_glossary_terms,
+)
 from services.access_content_service import (
     get_admin_pages,
     get_cabinet_pages,
@@ -433,7 +443,8 @@ def create_app() -> Flask:
             quick_links=[
                 {"label": "Поиск по базе знаний", "url": url_for("search_page"), "note": "Основной рабочий сценарий"},
                 {"label": "Статьи базы знаний", "url": url_for("articles_page"), "note": "Просмотр источников"},
-                {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Ключевые термины"},
+                {"label": "Отраслевой глоссарий", "url": url_for("glossary_page"), "note": "Термины и сокращения"},
+                {"label": "Команды диагностики", "url": url_for("diagnostics_page"), "note": "Памятка первой линии"},
                 {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
                 {"label": "Обратная связь", "url": url_for("feedback_page"), "note": "Фиксация замечаний"},
                 {"label": "Моя история XLSX", "url": url_for("export_my_history"), "note": "Персональная выгрузка"},
@@ -461,10 +472,11 @@ def create_app() -> Flask:
             section_label="Контур редактора",
             navigation_title="Рабочие разделы редактора",
             section_navigation=get_editor_pages(),
-            info_cards=get_content_statistics(),
+            info_cards=get_content_statistics() + get_glossary_statistics() + get_diagnostics_statistics(),
             quick_links=[
                 {"label": "Каталог статей", "url": url_for("articles_page"), "note": "Публичный корпус"},
-                {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Термины проекта"},
+                {"label": "Отраслевой глоссарий", "url": url_for("glossary_page"), "note": "Термины и сокращения"},
+                {"label": "Команды диагностики", "url": url_for("diagnostics_page"), "note": "Справочник первой линии"},
                 {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
             ],
         )
@@ -478,10 +490,11 @@ def create_app() -> Flask:
             section_label="Контур редактора",
             navigation_title="Рабочие разделы редактора",
             section_navigation=get_editor_pages(),
-            info_cards=get_content_statistics(),
+            info_cards=get_content_statistics() + get_glossary_statistics() + get_diagnostics_statistics(),
             quick_links=[
                 {"label": "Открыть каталог статей", "url": url_for("articles_page"), "note": "Проверка публичного отображения"},
                 {"label": "Открыть глоссарий", "url": url_for("glossary_page"), "note": "Справочный раздел"},
+                {"label": "Открыть команды диагностики", "url": url_for("diagnostics_page"), "note": "Команды первой линии"},
                 {"label": "Открыть FAQ", "url": url_for("faq_page"), "note": "Публичные ответы"},
             ],
         )
@@ -546,6 +559,7 @@ def create_app() -> Flask:
                 {"label": "Статьи", "url": url_for("articles_page"), "note": "Каталог материалов"},
                 {"label": "Поиск", "url": url_for("search_page"), "note": "Проверка RAG-сценария"},
                 {"label": "Глоссарий", "url": url_for("glossary_page"), "note": "Справочные термины"},
+                {"label": "Команды диагностики", "url": url_for("diagnostics_page"), "note": "Памятка поддержки"},
                 {"label": "FAQ", "url": url_for("faq_page"), "note": "Типовые вопросы"},
                 {"label": "Тестирование", "url": url_for("testing_page"), "note": "Подходы к проверке"},
             ],
@@ -900,7 +914,31 @@ def create_app() -> Flask:
 
     @app.route("/glossary")
     def glossary_page():
-        return render_content_page("glossary_page")
+        # Глоссарий на этапе 23 строится из сервисного справочника:
+        # так можно показать категории и примеры без рискованной миграции SQL.
+        page = get_page_by_endpoint("glossary_page")
+        return render_template(
+            "glossary.html",
+            page_title=page["title"],
+            page=page,
+            terms=get_glossary_terms(),
+            categories=get_glossary_categories(),
+            breadcrumbs=build_breadcrumbs((page["title"], None)),
+        )
+
+    @app.route("/diagnostics")
+    def diagnostics_page():
+        # Команды первой диагностики являются публичным учебным справочником:
+        # в него включены только безопасные команды просмотра состояния.
+        page = get_page_by_endpoint("diagnostics_page")
+        return render_template(
+            "diagnostics.html",
+            page_title=page["title"],
+            page=page,
+            commands=get_diagnostic_commands(),
+            categories=get_diagnostic_categories(),
+            breadcrumbs=build_breadcrumbs((page["title"], None)),
+        )
 
     @app.route("/onboarding")
     def onboarding_page():

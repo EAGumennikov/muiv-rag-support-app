@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel panel-readable">
+    <span class="eyebrow">{{ page.eyebrow }}</span>
+    <h1>{{ page.heading }}</h1>
+    <p class="lead-text">{{ page.summary }}</p>
+    {{ page.content | markdown_to_html }}
+</section>
+
+<section class="panel reference-panel" data-reference-list>
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Первая линия</span>
+            <h2>Команды диагностики</h2>
+        </div>
+        <p class="panel-hint">Справочник содержит команды просмотра состояния и безопасные первичные проверки.</p>
+    </div>
+
+    <div class="reference-controls">
+        <label>
+            <span>Поиск</span>
+            <input type="search" data-reference-search placeholder="Например: DNS, свободное место, ping">
+        </label>
+        <label>
+            <span>ОС / раздел</span>
+            <select data-reference-category>
+                <option value="">Все разделы</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </div>
+
+    <div class="diagnostics-grid">
+        {% for command in commands %}
+        <article class="reference-card diagnostic-card" data-reference-item data-category="{{ command.os }}" data-search="{{ command.name }} {{ command.os }} {{ command.purpose }} {{ command.example }} {{ command.result }} {{ command.note }}">
+            <div class="reference-card-head">
+                <h3><code>{{ command.name }}</code></h3>
+                <span class="category-badge">{{ command.os }}</span>
+            </div>
+            <p>{{ command.purpose }}</p>
+            <div class="command-example">
+                <span>Пример</span>
+                <code>{{ command.example }}</code>
+            </div>
+            <p><strong>Что смотреть:</strong> {{ command.result }}</p>
+            {% if command.note %}
+            <p class="reference-note">{{ command.note }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+
+    <p class="placeholder-text is-hidden" data-reference-empty>По выбранным условиям команды не найдены.</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reference_filters.js') }}"></script>
+{% endblock %}

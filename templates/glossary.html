@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="panel panel-readable">
+    <span class="eyebrow">{{ page.eyebrow }}</span>
+    <h1>{{ page.heading }}</h1>
+    <p class="lead-text">{{ page.summary }}</p>
+    {{ page.content | markdown_to_html }}
+</section>
+
+<section class="panel reference-panel" data-reference-list>
+    <div class="section-head">
+        <div>
+            <span class="eyebrow">Справочник</span>
+            <h2>Термины и сокращения</h2>
+        </div>
+        <p class="panel-hint">Данные не содержат закрытых ссылок, адресов систем и непубличных регламентов.</p>
+    </div>
+
+    <div class="reference-controls">
+        <label>
+            <span>Поиск</span>
+            <input type="search" data-reference-search placeholder="Например: АСУ ТП, DNS, безопасность">
+        </label>
+        <label>
+            <span>Категория</span>
+            <select data-reference-category>
+                <option value="">Все категории</option>
+                {% for category in categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </div>
+
+    <div class="glossary-grid">
+        {% for item in terms %}
+        <article class="reference-card" data-reference-item data-category="{{ item.category }}" data-search="{{ item.term }} {{ item.expansion }} {{ item.comment }} {{ item.example }}">
+            <div class="reference-card-head">
+                <h3>{{ item.term }}</h3>
+                <span class="category-badge">{{ item.category }}</span>
+            </div>
+            <p class="reference-expansion">{{ item.expansion }}</p>
+            <p>{{ item.comment }}</p>
+            {% if item.example %}
+            <p class="reference-note">{{ item.example }}</p>
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+
+    <p class="placeholder-text is-hidden" data-reference-empty>По выбранным условиям ничего не найдено.</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reference_filters.js') }}"></script>
+{% endblock %}

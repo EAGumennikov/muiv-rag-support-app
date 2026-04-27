@@ -836,6 +836,130 @@ img {
     font-size: 0.95rem;
 }
 
+/* Справочные разделы этапа 23: глоссарий и команды диагностики. */
+.reference-panel {
+    overflow: hidden;
+}
+
+.reference-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.reference-controls label {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.reference-controls input,
+.reference-controls select {
+    width: 100%;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    color: var(--text);
+    font: inherit;
+}
+
+.reference-controls input:focus,
+.reference-controls select:focus {
+    outline: 3px solid var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.glossary-grid,
+.diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.reference-card {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(21, 45, 82, 0.05);
+}
+
+.reference-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.reference-card h3,
+.reference-card p {
+    margin: 0;
+}
+
+.reference-card h3 {
+    overflow-wrap: anywhere;
+}
+
+.reference-expansion {
+    color: var(--accent-dark);
+    font-weight: 800;
+}
+
+.reference-note {
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.category-badge {
+    flex-shrink: 0;
+    padding: 0.25rem 0.55rem;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.diagnostic-card code,
+.command-example code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.diagnostic-card h3 code {
+    padding: 0.18rem 0.35rem;
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--accent-dark);
+    font-size: 0.95rem;
+}
+
+.command-example {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: #172234;
+    color: #f7f8fa;
+}
+
+.command-example span {
+    color: #b7c8df;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.command-example code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
 .markdown-content {
     color: var(--text);
 }
@@ -958,6 +1082,8 @@ img {
     .hero-compact,
     .results-grid,
     .card-grid,
+    .glossary-grid,
+    .diagnostics-grid,
     .article-layout,
     .secure-layout,
     .secure-card-grid,
@@ -998,6 +1124,10 @@ img {
     }
 
     .debug-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reference-controls {
         grid-template-columns: 1fr;
     }
 
