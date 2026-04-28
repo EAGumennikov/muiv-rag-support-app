@@ -30,3 +30,7 @@ logs/
 .idea/
 
 !config/.env.example
+
+# Служебные каталоги Synology DSM
+@eaDir/
+**/@eaDir/

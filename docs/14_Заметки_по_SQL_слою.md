@@ -13,7 +13,7 @@
 
 Если переменная окружения `RAG_APP_DATABASE_URL` не задана, приложение использует:
 
-`sqlite:///~/Projects/muiv-rag-support-workdir/output/app/muiv_rag_support.sqlite3`
+`sqlite:///<workdir>/output/app/muiv_rag_support.sqlite3`
 
 ## Подготовленные таблицы
 
