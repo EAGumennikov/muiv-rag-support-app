@@ -1,0 +1,34 @@
+services:
+  muiv-rag-support:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # На DS920+ bridge-сеть Docker не получает корректный DNS, поэтому
+      # сборка использует host network для установки Python-зависимостей.
+      network: host
+    container_name: muiv-rag-support
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      # В файле остаются локальные настройки приложения без попадания в git.
+      # Пути к RAG-файлам ниже переопределяются на контейнерные /workdir/...
+      - ../muiv-rag-support-workdir/.env.local
+    environment:
+      FLASK_RUN_HOST: "0.0.0.0"
+      FLASK_RUN_PORT: "5002"
+      FLASK_DEBUG: "0"
+      RAG_INPUT_CHUNKS: "/workdir/input/astra_linux_wiki_chunks.jsonl"
+      RAG_INDEX_PATH: "/workdir/output/indexes/astra_linux_wiki_faiss.index"
+      RAG_CHUNK_MAP_PATH: "/workdir/output/indexes/astra_linux_wiki_chunk_map.jsonl"
+      RAG_EMBEDDINGS_PATH: "/workdir/output/embeddings/astra_linux_wiki_embeddings.npy"
+      RAG_RETRIEVAL_STATS: "/workdir/output/retrieval_debug/astra_linux_wiki_index_stats.txt"
+      RAG_APP_DATABASE_URL: "sqlite:////workdir/output/app/muiv_rag_support.sqlite3"
+    volumes:
+      # Workdir подключается только как внешний runtime-каталог: здесь находятся
+      # SQLite-БД, индекс, embeddings, chunk map и файлы с секретами.
+      - ../muiv-rag-support-workdir:/workdir
+    command: >
+      /bin/sh -c "set -a &&
+      . /workdir/.env.yc &&
+      set +a &&
+      exec gunicorn --bind 0.0.0.0:5002 --workers 2 --threads 4 --timeout 180 app:app"

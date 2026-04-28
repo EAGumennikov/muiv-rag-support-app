@@ -7,3 +7,4 @@ Markdown
 SQLAlchemy
 python-docx
 openpyxl
+gunicorn
