@@ -116,7 +116,7 @@ def _build_source_excerpt(chunk_text: str, section: str) -> str:
 
     excerpt = _normalize_text(" ".join(lines))
     if len(excerpt) > 220:
-        excerpt = excerpt[:217].rstrip() + "..."
+        excerpt = excerpt[:217].rstrip() + "…"
     return excerpt
 
 
@@ -232,6 +232,152 @@ def get_documents_list(limit: int | None = None) -> List[Dict]:
     if limit is None:
         return documents
     return documents[:limit]
+
+
+ARTICLE_PER_PAGE_DEFAULT = 100
+ARTICLE_PER_PAGE_MAX = 100
+ARTICLE_SORT_OPTIONS = OrderedDict(
+    (
+        ("title", "По названию"),
+        ("category", "По разделу"),
+    )
+)
+
+
+def _public_breadcrumbs(document: Dict) -> List[str]:
+    # Для каталога оставляем только понятный пользователю путь статьи.
+    # Корневой узел и технические маркеры корпуса скрываются из списка.
+    ignored = {"база знаний", "_topics", "topics"}
+    result = []
+    for item in document.get("breadcrumbs") or []:
+        cleaned = _normalize_text(str(item)).lstrip("_").strip()
+        if not cleaned or cleaned.lower() in ignored:
+            continue
+        result.append(cleaned)
+    return result
+
+
+def _document_top_category(document: Dict) -> str:
+    # Верхний раздел берется из очищенных хлебных крошек статьи, чтобы фильтр
+    # был полезен пользователю, а не повторял общее название каталога.
+    breadcrumbs = _public_breadcrumbs(document)
+    return breadcrumbs[0] if breadcrumbs else "Без раздела"
+
+
+def _article_search_text(document: Dict) -> str:
+    # Поиск по каталогу работает только по пользовательским метаданным.
+    # Внутренние пути вроде source_file намеренно не попадают в индекс поиска.
+    values = [
+        document.get("display_title") or document.get("title") or "",
+        document.get("title") or "",
+        " ".join(_public_breadcrumbs(document)),
+        document.get("author") or "",
+        document.get("date") or "",
+    ]
+    return _normalize_text(" ".join(values)).lower()
+
+
+def _public_article_row(document: Dict) -> Dict:
+    # Для списка статей формируется отдельная структура без технических полей
+    # source_file и normalized_file, чтобы шаблон не раскрывал внутреннее хранение.
+    breadcrumbs = _public_breadcrumbs(document)
+    return {
+        "doc_id": document.get("doc_id", ""),
+        "title": document.get("title", ""),
+        "display_title": document.get("display_title") or document.get("title", ""),
+        "breadcrumbs": breadcrumbs,
+        "path_label": " > ".join(breadcrumbs),
+        "top_category": _document_top_category(document),
+        "author": document.get("author", ""),
+        "date": document.get("date", ""),
+        "original_url": document.get("original_url", ""),
+    }
+
+
+def get_article_categories() -> List[str]:
+    # Список категорий строится по всему корпусу, а не по текущей странице,
+    # чтобы фильтр каталога работал ожидаемо при любой пагинации.
+    categories = {_document_top_category(document) for document in get_documents_list()}
+    return sorted(categories, key=lambda value: value.lower())
+
+
+def search_documents_catalog(
+    query: str = "",
+    category: str = "",
+    sort: str = "title",
+    page: int = 1,
+    per_page: int = ARTICLE_PER_PAGE_DEFAULT,
+) -> Dict:
+    # Серверная фильтрация нужна, чтобы пользователь работал со всем корпусом,
+    # а не только со статьями, которые уже попали на текущую страницу HTML.
+    documents = get_documents_list()
+    normalized_query = _normalize_text(query).lower()
+    selected_category = _normalize_text(category)
+    sort_key = sort if sort in ARTICLE_SORT_OPTIONS else "title"
+
+    filtered = []
+    for document in documents:
+        top_category = _document_top_category(document)
+        if selected_category and top_category != selected_category:
+            continue
+        if normalized_query and normalized_query not in _article_search_text(document):
+            continue
+        filtered.append(_public_article_row(document))
+
+    if sort_key == "category":
+        filtered.sort(key=lambda item: (item["top_category"].lower(), item["display_title"].lower()))
+    else:
+        filtered.sort(key=lambda item: item["display_title"].lower())
+
+    safe_per_page = min(max(int(per_page or ARTICLE_PER_PAGE_DEFAULT), 1), ARTICLE_PER_PAGE_MAX)
+    total = len(filtered)
+    total_pages = max(1, (total + safe_per_page - 1) // safe_per_page)
+    safe_page = min(max(int(page or 1), 1), total_pages)
+    start = (safe_page - 1) * safe_per_page
+    end = start + safe_per_page
+
+    return {
+        "items": filtered[start:end],
+        "total_all": len(documents),
+        "total_filtered": total,
+        "pagination": {
+            "page": safe_page,
+            "per_page": safe_per_page,
+            "total_pages": total_pages,
+            "has_prev": safe_page > 1,
+            "has_next": safe_page < total_pages,
+            "prev_page": safe_page - 1 if safe_page > 1 else None,
+            "next_page": safe_page + 1 if safe_page < total_pages else None,
+            "start_index": start + 1 if total else 0,
+            "end_index": min(end, total),
+        },
+        "filters": {
+            "q": query.strip(),
+            "category": selected_category,
+            "sort": sort_key,
+        },
+    }
+
+
+def compact_page_range(current_page: int, total_pages: int, window: int = 2) -> List[int | None]:
+    # В пагинации не нужно показывать десятки ссылок подряд: компактный диапазон
+    # сохраняет доступ к началу, концу и соседним страницам без перегруза.
+    if total_pages <= 7:
+        return list(range(1, total_pages + 1))
+
+    pages = {1, total_pages}
+    for number in range(current_page - window, current_page + window + 1):
+        if 1 <= number <= total_pages:
+            pages.add(number)
+
+    result: List[int | None] = []
+    previous = 0
+    for number in sorted(pages):
+        if previous and number - previous > 1:
+            result.append(None)
+        result.append(number)
+        previous = number
+    return result
 
 
 def get_featured_documents(limit: int = 6) -> List[Dict]:

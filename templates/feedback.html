@@ -12,24 +12,24 @@
     <h2>Форма обратной связи</h2>
     <form class="question-form" action="{{ url_for('feedback_page') }}" method="post">
         <label for="name">Имя</label>
-        <input id="name" name="name" type="text" value="{{ form_data.name }}" placeholder="Введите имя">
+        <input id="name" name="name" type="text" autocomplete="name" value="{{ form_data.name }}" placeholder="Введите имя">
 
         <label for="email">Электронная почта</label>
-        <input id="email" name="email" type="email" value="{{ form_data.email }}" placeholder="Введите email">
+        <input id="email" name="email" type="email" autocomplete="email" value="{{ form_data.email }}" placeholder="Введите email">
 
         <label for="topic">Тема</label>
-        <input id="topic" name="topic" type="text" value="{{ form_data.topic }}" placeholder="Например: качество ответа или предложение по интерфейсу">
+        <input id="topic" name="topic" type="text" autocomplete="off" value="{{ form_data.topic }}" placeholder="Например: качество ответа или предложение по интерфейсу">
 
         <label for="message">Сообщение</label>
-        <textarea id="message" name="message" rows="6" placeholder="Опишите замечание, вопрос или предложение">{{ form_data.message }}</textarea>
+        <textarea id="message" name="message" rows="6" autocomplete="off" placeholder="Опишите замечание, вопрос или предложение">{{ form_data.message }}</textarea>
 
         <button type="submit">Отправить сообщение</button>
 
         {% if success_message %}
-        <div class="status-message status-success">{{ success_message }}</div>
+        <div class="status-message status-success" role="status" aria-live="polite">{{ success_message }}</div>
         {% endif %}
         {% if error_message %}
-        <div class="status-message status-error">{{ error_message }}</div>
+        <div class="status-message status-error" role="alert">{{ error_message }}</div>
         {% endif %}
     </form>
 </section>

@@ -44,11 +44,11 @@
         {% if error_message %}
         <div id="rag-error" class="status-message status-error">{{ error_message }}</div>
         {% else %}
-        <div id="rag-error" class="status-message status-error is-hidden"></div>
+        <div id="rag-error" class="status-message status-error is-hidden" role="alert"></div>
         {% endif %}
         <div id="rag-loading" class="loading-state is-hidden" aria-live="polite">
-            <span class="loading-dot"></span>
-            <span>Формируется ответ по материалам базы знаний...</span>
+            <span class="loading-dot" aria-hidden="true"></span>
+            <span>Формируется ответ по материалам базы знаний…</span>
         </div>
     </form>
     {% else %}
@@ -95,7 +95,7 @@
             <p class="panel-hint">Откройте статью целиком или скачайте markdown-версию для подробного просмотра.</p>
             {% endif %}
         </div>
-        <div id="rag-sources" class="source-cards {% if not sources %}is-empty{% endif %}">
+        <div id="rag-sources" aria-live="polite" class="source-cards {% if not sources %}is-empty{% endif %}">
         {% if sources %}
             {% for source in sources %}
             <article class="source-card">

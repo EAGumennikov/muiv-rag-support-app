@@ -370,7 +370,7 @@ def list_recent_rag_answers(limit: int = 20, user_id: int | None = None) -> list
                 "search_query_id": row.search_query_id,
                 "question_text": row.search_query.question_text if row.search_query else "",
                 "username": row.search_query.user.username if row.search_query and row.search_query.user else "",
-                "answer_text": row.answer_text[:240] + ("..." if len(row.answer_text) > 240 else ""),
+                "answer_text": row.answer_text[:240] + ("…" if len(row.answer_text) > 240 else ""),
                 "created_at": format_display_datetime(row.created_at),
             }
             for row in rows
@@ -545,7 +545,7 @@ def _excerpt(text: str, limit: int) -> str:
     value = " ".join((text or "").split())
     if len(value) <= limit:
         return value
-    return value[: limit - 3].rstrip() + "..."
+    return value[: limit - 1].rstrip() + "…"
 
 
 def get_admin_dashboard_stats() -> list[dict[str, Any]]:

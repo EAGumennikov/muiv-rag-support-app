@@ -20,11 +20,11 @@
     <div class="reference-controls">
         <label>
             <span>Поиск</span>
-            <input type="search" data-reference-search placeholder="Например: АСУ ТП, DNS, безопасность">
+            <input type="search" name="glossary_search" data-reference-search autocomplete="off" placeholder="Например: АСУ ТП, DNS, безопасность">
         </label>
         <label>
             <span>Категория</span>
-            <select data-reference-category>
+            <select name="glossary_category" data-reference-category>
                 <option value="">Все категории</option>
                 {% for category in categories %}
                 <option value="{{ category }}">{{ category }}</option>
@@ -56,7 +56,7 @@
         {% endfor %}
     </div>
 
-    <p class="placeholder-text is-hidden" data-reference-empty>По выбранным условиям ничего не найдено.</p>
+    <p class="placeholder-text is-hidden" data-reference-empty aria-live="polite">По выбранным условиям ничего не найдено.</p>
 </section>
 {% endblock %}
 

@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Перейти к основному содержимому</a>
     <header class="site-header">
         <div class="container header-inner">
             <a class="brand" href="{{ url_for('index') }}" aria-label="Система управления знаниями поддержки">
@@ -67,7 +68,7 @@
         </div>
     </header>
 
-    <main class="container page-content">
+    <main id="main-content" class="container page-content" tabindex="-1">
         <nav class="breadcrumbs" aria-label="Хлебные крошки">
             <ol>
                 {% for crumb in breadcrumbs %}

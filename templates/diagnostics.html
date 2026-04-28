@@ -20,11 +20,11 @@
     <div class="reference-controls">
         <label>
             <span>Поиск</span>
-            <input type="search" data-reference-search placeholder="Например: DNS, свободное место, ping">
+            <input type="search" name="diagnostics_search" data-reference-search autocomplete="off" placeholder="Например: DNS, свободное место, ping">
         </label>
         <label>
             <span>ОС / раздел</span>
-            <select data-reference-category>
+            <select name="diagnostics_category" data-reference-category>
                 <option value="">Все разделы</option>
                 {% for category in categories %}
                 <option value="{{ category }}">{{ category }}</option>
@@ -53,7 +53,7 @@
         {% endfor %}
     </div>
 
-    <p class="placeholder-text is-hidden" data-reference-empty>По выбранным условиям команды не найдены.</p>
+    <p class="placeholder-text is-hidden" data-reference-empty aria-live="polite">По выбранным условиям команды не найдены.</p>
 </section>
 {% endblock %}
 

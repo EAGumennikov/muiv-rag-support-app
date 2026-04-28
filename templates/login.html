@@ -12,15 +12,15 @@
         <input type="hidden" name="next" value="{{ next_url }}">
 
         <label for="username">Логин</label>
-        <input id="username" name="username" type="text" placeholder="Например: admin">
+        <input id="username" name="username" type="text" autocomplete="username" placeholder="Например: admin">
 
         <label for="password">Пароль</label>
-        <input id="password" name="password" type="password" placeholder="Введите пароль">
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Введите пароль">
 
         <button type="submit">Войти</button>
 
         {% if error_message %}
-        <div class="status-message status-error">{{ error_message }}</div>
+        <div class="status-message status-error" role="alert">{{ error_message }}</div>
         {% endif %}
     </form>
 </section>

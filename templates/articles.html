@@ -6,22 +6,102 @@
     <h1>{{ page.heading }}</h1>
     <p class="lead-text">{{ page.summary }}</p>
     {{ page.content | markdown_to_html }}
-    <p class="stats-line">Доступно статей в публичном каталоге: <strong>{{ documents_count }}</strong></p>
+    <p class="stats-line">В публичном каталоге доступно статей: <strong>{{ documents_count }}</strong></p>
 </section>
 
-<section class="card-grid">
-    {% for article in documents %}
-    <article class="info-card info-card-stretch">
-        <h2><a href="{{ url_for('article_detail', doc_id=article.doc_id) }}">{{ article.display_title or article.title }}</a></h2>
-        <p class="muted-text">{{ article.breadcrumbs | join(" > ") }}</p>
-        <div class="source-actions">
-            <a class="button-secondary" href="{{ url_for('article_detail', doc_id=article.doc_id) }}">Открыть статью</a>
-            <a class="button-secondary" href="{{ url_for('download_article', doc_id=article.doc_id) }}">Скачать markdown</a>
-            {% if article.original_url %}
-            <a class="button-secondary" href="{{ article.original_url }}" target="_blank" rel="noopener noreferrer">Открыть оригинал</a>
-            {% endif %}
+<section class="panel article-catalog" aria-labelledby="article-catalog-title">
+    <div class="section-head section-head-compact">
+        <div>
+            <span class="eyebrow">Материалы</span>
+            <h2 id="article-catalog-title">Список статей базы знаний</h2>
         </div>
-    </article>
-    {% endfor %}
+        <p class="panel-hint">Поиск и фильтры применяются ко всему корпусу, а не только к текущей странице.</p>
+    </div>
+
+    <form class="article-filters" method="get" action="{{ url_for('articles_page') }}" role="search">
+        <label for="article-search">
+            <span>Поиск по названию и разделу</span>
+            <input id="article-search" name="q" type="search" value="{{ filters.q }}" autocomplete="off" placeholder="Например: принтер, DNS, учетная запись">
+        </label>
+        <label for="article-category">
+            <span>Верхний раздел</span>
+            <select id="article-category" name="category">
+                <option value="">Все разделы</option>
+                {% for category in categories %}
+                <option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>{{ category }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label for="article-sort">
+            <span>Сортировка</span>
+            <select id="article-sort" name="sort">
+                {% for value, label in sort_options.items() %}
+                <option value="{{ value }}" {% if filters.sort == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="article-filter-actions">
+            <button type="submit" class="button-primary">Найти</button>
+            <a class="button-secondary" href="{{ url_for('articles_page') }}">Сбросить</a>
+        </div>
+    </form>
+
+    <div class="article-catalog-summary" aria-live="polite">
+        <p>Найдено: <strong>{{ articles_total }}</strong> статей.</p>
+        {% if articles_total %}
+        <p>Показаны {{ pagination.start_index }}-{{ pagination.end_index }} из {{ articles_total }}.</p>
+        {% endif %}
+    </div>
+
+    {% if documents %}
+    <div class="article-list" role="list">
+        {% for article in documents %}
+        <article class="article-row" role="listitem">
+            <div class="article-row-main">
+                <h3><a href="{{ url_for('article_detail', doc_id=article.doc_id) }}">{{ article.display_title or article.title }}</a></h3>
+                <p class="article-row-path">{{ article.path_label or 'Раздел не указан' }}</p>
+                <span class="category-badge">{{ article.top_category }}</span>
+            </div>
+            <div class="article-row-actions" aria-label="Действия со статьей {{ article.display_title or article.title }}">
+                <a class="button-secondary button-compact" href="{{ url_for('article_detail', doc_id=article.doc_id) }}">Открыть</a>
+                <a class="button-secondary button-compact" href="{{ url_for('download_article', doc_id=article.doc_id) }}">Markdown</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state" role="status">
+        <h3>Статьи не найдены</h3>
+        <p>Попробуйте изменить поисковый запрос, выбрать другой раздел или сбросить фильтры.</p>
+    </div>
+    {% endif %}
+
+    {% if pagination.total_pages > 1 %}
+    <nav class="pagination" aria-label="Пагинация статей">
+        {% if pagination.has_prev %}
+        <a class="pagination-link" href="{{ prev_page_url }}">Назад</a>
+        {% else %}
+        <span class="pagination-link is-disabled" aria-disabled="true">Назад</span>
+        {% endif %}
+
+        {% for link in pagination_links %}
+            {% if link.number %}
+                {% if link.is_current %}
+                <span class="pagination-link is-current" aria-current="page">{{ link.number }}</span>
+                {% else %}
+                <a class="pagination-link" href="{{ link.url }}">{{ link.number }}</a>
+                {% endif %}
+            {% else %}
+            <span class="pagination-gap" aria-hidden="true">…</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <a class="pagination-link" href="{{ next_page_url }}">Вперед</a>
+        {% else %}
+        <span class="pagination-link is-disabled" aria-disabled="true">Вперед</span>
+        {% endif %}
+    </nav>
+    {% endif %}
 </section>
 {% endblock %}

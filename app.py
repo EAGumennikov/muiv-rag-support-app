@@ -16,11 +16,15 @@ from flask import Flask, Response, abort, g, jsonify, redirect, render_template,
 
 from services.answer_service import generate_answer_from_query
 from services.article_service import (
+    ARTICLE_PER_PAGE_DEFAULT,
+    ARTICLE_SORT_OPTIONS,
     article_download_payload,
     build_content_disposition,
+    compact_page_range,
+    get_article_categories,
     get_featured_documents,
     get_document_or_404,
-    get_documents_list,
+    search_documents_catalog,
 )
 from services.diagnostics_service import (
     get_diagnostic_categories,
@@ -901,17 +905,60 @@ def create_app() -> Flask:
 
     @app.route("/articles")
     def articles_page():
-        # Каталог статей — отдельная пользовательская точка входа в корпус знаний.
-        # Здесь можно просматривать материалы независимо от сценария /ask.
+        # Каталог статей работает поверх всего подготовленного корпуса.
+        # Фильтрация и пагинация выполняются на сервере, чтобы HTML не рендерил
+        # большой список целиком и чтобы поиск не ограничивался текущей страницей.
         page = get_page_by_endpoint("articles_page")
-        documents = get_documents_list(limit=60)
+        page_number = request.args.get("page", 1, type=int) or 1
+        per_page = request.args.get("per_page", ARTICLE_PER_PAGE_DEFAULT, type=int) or ARTICLE_PER_PAGE_DEFAULT
+        catalog = search_documents_catalog(
+            query=request.args.get("q", ""),
+            category=request.args.get("category", ""),
+            sort=request.args.get("sort", "title"),
+            page=page_number,
+            per_page=per_page,
+        )
+        pagination = catalog["pagination"]
+        filters = catalog["filters"]
+
+        filter_args = {}
+        if filters["q"]:
+            filter_args["q"] = filters["q"]
+        if filters["category"]:
+            filter_args["category"] = filters["category"]
+        if filters["sort"] != "title":
+            filter_args["sort"] = filters["sort"]
+
+        def article_page_url(target_page: int) -> str:
+            params = dict(filter_args)
+            params["page"] = target_page
+            return url_for("articles_page", **params)
+
+        pagination_links = []
+        for number in compact_page_range(pagination["page"], pagination["total_pages"]):
+            pagination_links.append(
+                {
+                    "number": number,
+                    "url": article_page_url(number) if number else "",
+                    "is_current": number == pagination["page"],
+                }
+            )
+
         return render_template(
             "articles.html",
             page_title=page["title"],
             page=page,
             breadcrumbs=build_breadcrumbs((page["title"], None)),
-            documents=documents,
-            documents_count=len(get_documents_list()),
+            documents=catalog["items"],
+            documents_count=catalog["total_all"],
+            articles_total=catalog["total_filtered"],
+            categories=get_article_categories(),
+            sort_options=ARTICLE_SORT_OPTIONS,
+            filters=filters,
+            pagination=pagination,
+            pagination_links=pagination_links,
+            prev_page_url=article_page_url(pagination["prev_page"]) if pagination["has_prev"] else "",
+            next_page_url=article_page_url(pagination["next_page"]) if pagination["has_next"] else "",
         )
 
     @app.route("/glossary")
